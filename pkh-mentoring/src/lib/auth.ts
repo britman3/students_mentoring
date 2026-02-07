@@ -61,7 +61,13 @@ export async function verifyPassword(password: string): Promise<boolean> {
   if (envPassword && password === envPassword) return true;
 
   // Check against hashed password in Settings
-  const settings = await prisma.settings.findFirst();
-  if (!settings) return false;
-  return compare(password, settings.adminPasswordHash);
+  try {
+    const settings = await prisma.settings.findFirst();
+    if (!settings) return false;
+    return compare(password, settings.adminPasswordHash);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown database error";
+    throw new Error(`Database connection failed: ${message}`);
+  }
 }

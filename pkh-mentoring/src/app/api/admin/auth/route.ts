@@ -2,18 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { setSessionCookie, clearSessionCookie, verifyPassword } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
+  let body;
   try {
-    const body = await request.json();
-    const { password } = body;
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
-    if (!password || !(await verifyPassword(password))) {
+  const { password } = body;
+  if (!password) {
+    return NextResponse.json({ error: "Password is required" }, { status: 400 });
+  }
+
+  try {
+    const valid = await verifyPassword(password);
+    if (!valid) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
     await setSessionCookie();
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("Admin auth error:", message);
+    return NextResponse.json(
+      { error: "Unable to verify password. Check database connection." },
+      { status: 503 }
+    );
   }
 }
 
