@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "../**/*.tsx";
+@source "../**/*.ts";
 
 @theme inline {
   /* PKH Brand Colors - Navy/Gold Palette */
