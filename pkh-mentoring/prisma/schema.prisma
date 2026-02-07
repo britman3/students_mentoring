@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ──────────────────────────────────────────────────────────
+
+enum StudentStatus {
+  PROSPECT
+  ENROLLED
+  SLOT_SELECTED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentPlan {
+  FULL
+  SPLIT_2
+  SPLIT_3
+  SPLIT_4
+  MONTHLY
+}
+
+enum PaymentMethod {
+  STRIPE
+  BANK_TRANSFER
+  CASH
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+enum MagicLinkStatus {
+  UNUSED
+  SENT
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum ActivityType {
+  STUDENT_CREATED
+  SLOT_SELECTED
+  PAYMENT_RECEIVED
+  STATUS_CHANGED
+  EMAIL_SENT
+  NOTE_ADDED
+  MAGIC_LINK_GENERATED
+  MAGIC_LINK_USED
+  WAITLIST_JOINED
+  WAITLIST_OFFERED
+  ARRANGEMENT_CREATED
+}
+
+// ─── CORE TABLES ────────────────────────────────────────────────────
+
+model Settings {
+  id               String   @id @default(cuid())
+  capacity         Int      @default(12)
+  anchorDate       DateTime @default("2026-01-06T00:00:00.000Z")
+  showGroupLabels  Boolean  @default(false)
+  adminPasswordHash String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Slot {
+  id          String         @id @default(cuid())
+  dayOfWeek   Int            // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  time        String         // "HH:mm" format, 24hr UK time
+  sortOrder   Int
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  instances   SlotInstance[]
+
+  @@unique([dayOfWeek, time])
+}
+
+model SlotInstance {
+  id          String    @id @default(cuid())
+  slotId      String
+  weekNumber  Int       // 1 or 2
+  groupLabel  String    // A-D for Week 1, M-P for Week 2
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  slot        Slot      @relation(fields: [slotId], references: [id])
+  students    Student[]
+
+  @@unique([slotId, weekNumber])
+}
+
+model Student {
+  id              String        @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String        @unique
+  phone           String?
+  status          StudentStatus @default(PROSPECT)
+  slotInstanceId  String?
+  firstCallDate   DateTime?
+  magicLinkId     String?
+  notes           String?
+
+  // ─── Expansion fields (populated by future features) ───
+  totalAmount     Float?
+  depositAmount   Float?
+  paymentPlanType PaymentPlan?
+  closerId        String?
+  saleDate        DateTime?
+  referralSource  String?
+  programmeId     String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  slotInstance    SlotInstance?  @relation(fields: [slotInstanceId], references: [id])
+  magicLink       MagicLink?    @relation(fields: [magicLinkId], references: [id])
+  closer          Closer?       @relation(fields: [closerId], references: [id])
+  programme       Programme?    @relation(fields: [programmeId], references: [id])
+  payments        Payment[]
+  arrangements    Arrangement[]
+  activityLogs    ActivityLog[]
+  waitlistEntries WaitlistEntry[]
+}
+
+model WaitlistEntry {
+  id            String         @id @default(cuid())
+  studentId     String
+  slotId        String
+  status        WaitlistStatus @default(WAITING)
+  requestedAt   DateTime       @default(now())
+  offeredAt     DateTime?
+  respondedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  student       Student        @relation(fields: [studentId], references: [id])
+}
+
+model MagicLink {
+  id          String          @id @default(cuid())
+  token       String          @unique
+  status      MagicLinkStatus @default(UNUSED)
+  studentId   String?
+  expiresAt   DateTime?
+  usedAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  students    Student[]
+}
+
+// ─── EXPANSION TABLES ───────────────────────────────────────────────
+
+model Closer {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  students  Student[]
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  studentId     String
+  amount        Float
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  reference     String?
+  dueDate       DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  student       Student       @relation(fields: [studentId], references: [id])
+}
+
+model Arrangement {
+  id          String   @id @default(cuid())
+  studentId   String
+  description String
+  agreedDate  DateTime
+  notes       String?
+  isResolved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student     Student  @relation(fields: [studentId], references: [id])
+}
+
+model ActivityLog {
+  id          String       @id @default(cuid())
+  studentId   String?
+  type        ActivityType
+  description String
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  student     Student?     @relation(fields: [studentId], references: [id])
+}
+
+model Programme {
+  id        String    @id @default(cuid())
+  name      String
+  isActive  Boolean   @default(true)
+  price     Float?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  students  Student[]
+}
