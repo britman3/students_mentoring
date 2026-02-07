@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import crypto from "crypto";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import type { NextResponse } from "next/server";
 
 const COOKIE_NAME = "pkh_admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 24; // 24 hours
@@ -31,10 +32,9 @@ function verifySessionToken(token: string): boolean {
   return age < SESSION_MAX_AGE;
 }
 
-export async function setSessionCookie(): Promise<void> {
+export function setSessionCookie(response: NextResponse): void {
   const token = createSessionToken();
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
+  response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -43,9 +43,8 @@ export async function setSessionCookie(): Promise<void> {
   });
 }
 
-export async function clearSessionCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+export function clearSessionCookie(response: NextResponse): void {
+  response.cookies.delete(COOKIE_NAME);
 }
 
 export async function isAuthenticated(): Promise<boolean> {

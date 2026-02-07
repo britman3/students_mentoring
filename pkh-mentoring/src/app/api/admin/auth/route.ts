@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
-    await setSessionCookie();
-    return NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true });
+    setSessionCookie(response);
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
     console.error("Admin auth error:", message);
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE() {
-  await clearSessionCookie();
-  return NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true });
+  clearSessionCookie(response);
+  return response;
 }
