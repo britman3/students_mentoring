@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@source "../**/*.tsx";
+@source "../**/*.ts";
+
+@theme inline {
+  /* PKH Brand Colors - Navy/Gold Palette */
+  --color-navy: #1B2A4A;
+  --color-navy-dark: #0F1B33;
+  --color-navy-light: #2A3F6B;
+
+  --color-gold: #C9A84C;
+  --color-gold-light: #E2CC7A;
+  --color-gold-dark: #A68A3E;
+
+  --color-sand: #F5F0E8;
+  --color-sand-dark: #E8DFD0;
+
+  --color-warm-white: #FAF8F5;
+  --color-warm-grey: #6B7280;
+  --color-charcoal: #2D2D2D;
+
+  /* Status Colors */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Fonts */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: var(--color-warm-white);
+  color: var(--color-charcoal);
+  font-family: var(--font-sans);
+}
