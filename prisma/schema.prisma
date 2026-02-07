@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StudentStatus {
+  LINK_SENT
+  SLOT_SELECTED
+  ACTIVE
+  PAUSED
+  DROPPED
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  EXPIRED
+  ENROLLED
+}
+
+model Slot {
+  id        String   @id @default(cuid())
+  day       String   // e.g. "Monday"
+  time      String   // e.g. "16:00"
+  capacity  Int      @default(4)
+  isOpen    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  instances      SlotInstance[]
+  waitlistEntries WaitlistEntry[]
+
+  @@unique([day, time])
+}
+
+model SlotInstance {
+  id          String   @id @default(cuid())
+  slotId      String
+  weekNumber  Int      // 1 or 2
+  groupLabel  String   // e.g. "Monday 4pm - Week 1"
+  startDate   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slot     Slot      @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  students Student[]
+
+  @@unique([slotId, weekNumber])
+}
+
+model Student {
+  id             String        @id @default(cuid())
+  firstName      String
+  lastName       String
+  email          String        @unique
+  phone          String?
+  status         StudentStatus @default(LINK_SENT)
+  notes          String?
+  slotInstanceId String?
+  firstCallDate  DateTime?
+  startDate      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  slotInstance SlotInstance? @relation(fields: [slotInstanceId], references: [id])
+  magicLink    MagicLink?
+}
+
+model MagicLink {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  studentId String   @unique
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model WaitlistEntry {
+  id        String         @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  slotId    String
+  status    WaitlistStatus @default(WAITING)
+  expiresAt DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  slot Slot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id                 String   @id @default("global")
+  globalCapacity     Int      @default(4)
+  week1AnchorDate    DateTime @default(now())
+  showGroupLabels    Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

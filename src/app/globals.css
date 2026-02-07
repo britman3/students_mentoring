@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-sand-light text-warmGrey-dark antialiased;
+  }
+}
+
+@layer components {
+  .skeleton {
+    @apply animate-pulse bg-sand-dark rounded;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
