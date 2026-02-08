@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard,
   Clock,
   Users,
-  Link as LinkIcon,
   BarChart3,
   Settings,
   LogOut,
@@ -15,13 +14,17 @@ import {
   X,
 } from "lucide-react";
 
+interface NavBadges {
+  students: number;
+  slots: number;
+}
+
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/slots", label: "Slots", icon: Clock },
-  { href: "/admin/students", label: "Students", icon: Users },
-  { href: "/admin/links", label: "Magic Links", icon: LinkIcon },
-  { href: "/admin/stats", label: "Stats", icon: BarChart3 },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, badgeKey: null },
+  { href: "/admin/slots", label: "Slots", icon: Clock, badgeKey: "slots" as const },
+  { href: "/admin/students", label: "Students", icon: Users, badgeKey: "students" as const },
+  { href: "/admin/stats", label: "Stats", icon: BarChart3, badgeKey: null },
+  { href: "/admin/settings", label: "Settings", icon: Settings, badgeKey: null },
 ];
 
 function getBreadcrumbs(pathname: string) {
@@ -46,6 +49,19 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [badges, setBadges] = useState<NavBadges>({ students: 0, slots: 0 });
+
+  useEffect(() => {
+    fetch("/api/admin/stats/summary")
+      .then((res) => res.json())
+      .then((data) => {
+        setBadges({
+          students: data.totalStudents ?? 0,
+          slots: data.openSlots ?? 0,
+        });
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   if (pathname === "/admin/login") {
     return <>{children}</>;
@@ -81,6 +97,7 @@ export default function AdminLayout({
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
+          const badgeCount = item.badgeKey ? badges[item.badgeKey] : 0;
           return (
             <Link
               key={item.href}
@@ -93,7 +110,12 @@ export default function AdminLayout({
               }`}
             >
               <Icon size={18} />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.badgeKey && badgeCount > 0 && (
+                <span className="bg-gold text-navy text-xs font-semibold px-2 py-0.5 rounded-full min-w-[20px] text-center" style={{ fontSize: "12px" }}>
+                  {badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}

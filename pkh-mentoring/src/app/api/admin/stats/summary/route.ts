@@ -8,7 +8,7 @@ export async function GET() {
     const settings = await prisma.settings.findFirst();
     const capacity = settings?.capacity ?? 12;
 
-    const [totalStudents, waitlistCount, slots, recentEnrolments] =
+    const [totalStudents, waitlistCount, slots, recentEnrolments, closers] =
       await Promise.all([
         prisma.student.count({
           where: {
@@ -36,6 +36,23 @@ export async function GET() {
             },
           },
         }),
+        prisma.closer.findMany({
+          where: { isActive: true },
+          include: {
+            _count: {
+              select: {
+                students: {
+                  where: {
+                    status: {
+                      in: [StudentStatus.SLOT_SELECTED, StudentStatus.ACTIVE],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { firstName: "asc" },
+        }),
       ]);
 
     const totalCapacity = slots.reduce(
@@ -44,11 +61,20 @@ export async function GET() {
     );
     const openSlots = slots.length;
 
+    const closerStats = closers
+      .filter((c) => c._count.students > 0)
+      .map((c) => ({
+        id: c.id,
+        firstName: c.firstName,
+        studentCount: c._count.students,
+      }));
+
     return NextResponse.json({
       totalStudents,
       totalCapacity,
       openSlots,
       waitlistCount,
+      closerStats,
       recentEnrolments: recentEnrolments.map((s) => ({
         id: s.id,
         name: `${s.firstName} ${s.lastName}`,

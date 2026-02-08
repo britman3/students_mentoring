@@ -83,12 +83,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate time
+    const validTimes = ["12:00", "14:00", "16:00", "18:00"];
+    if (!validTimes.includes(time)) {
+      return NextResponse.json(
+        { error: "Slots can only be created at 12pm, 2pm, 4pm, or 6pm" },
+        { status: 400 }
+      );
+    }
+
+    // Check for duplicate day+time
+    const existing = await prisma.slot.findUnique({
+      where: { dayOfWeek_time: { dayOfWeek: day, time } },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: "A slot already exists for this day and time" },
+        { status: 409 }
+      );
+    }
+
     let gridPosition: number;
     try {
       gridPosition = calculateGridPosition(day, time);
     } catch {
       return NextResponse.json(
-        { error: "Slots can only be created at 12pm, 2pm, 4pm, or 6pm" },
+        { error: "Invalid day/time combination" },
         { status: 400 }
       );
     }
@@ -116,6 +136,17 @@ export async function POST(request: NextRequest) {
         instances: true,
       },
     });
+
+    // Recalculate sortOrder for ALL slots: order by dayOfWeek ASC, time ASC
+    const allSlots = await prisma.slot.findMany({
+      orderBy: [{ dayOfWeek: "asc" }, { time: "asc" }],
+    });
+    for (let i = 0; i < allSlots.length; i++) {
+      await prisma.slot.update({
+        where: { id: allSlots[i].id },
+        data: { sortOrder: i + 1 },
+      });
+    }
 
     return NextResponse.json(slot, { status: 201 });
   } catch (error) {
