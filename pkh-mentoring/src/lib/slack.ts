@@ -1,11 +1,12 @@
 interface SlackNotificationData {
   studentName: string;
   email: string;
-  dayName: string;
-  time: string;
+  closerName: string | null;
+  slotDisplayName: string;
   weekNumber: number;
   groupCode: string;
   firstCallDate: string;
+  lastCallDate: string;
 }
 
 export async function sendSlackNotification(
@@ -38,15 +39,23 @@ export async function sendSlackNotification(
               { type: "mrkdwn", text: `*Email:*\n${data.email}` },
               {
                 type: "mrkdwn",
-                text: `*Slot:*\n${data.dayName} ${data.time}`,
+                text: `*Closer:*\n${data.closerName || "Direct"}`,
               },
               {
                 type: "mrkdwn",
-                text: `*Assigned:*\nWeek ${data.weekNumber}, Group ${data.groupCode}`,
+                text: `*Slot:*\n${data.slotDisplayName}`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*Assigned:*\nWeek ${data.weekNumber} \u2014 ${data.groupCode}`,
               },
               {
                 type: "mrkdwn",
                 text: `*First Call:*\n${data.firstCallDate}`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*Last Call:*\n${data.lastCallDate}`,
               },
             ],
           },

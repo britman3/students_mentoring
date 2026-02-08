@@ -1,7 +1,29 @@
-import { addMonths, addWeeks, differenceInDays } from "date-fns";
+import { addMonths, addWeeks, differenceInDays, format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Europe/London";
+
+/**
+ * Ordinal suffix for a day number: 1st, 2nd, 3rd, 4th, etc.
+ */
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+/**
+ * Format a date in UK style: "Wednesday 21st January 2026 at 4:00 PM"
+ */
+export function formatUKDate(date: Date): string {
+  const zoned = toZonedTime(date, TIMEZONE);
+  const dayName = format(zoned, "EEEE");
+  const day = zoned.getDate();
+  const month = format(zoned, "MMMM");
+  const year = format(zoned, "yyyy");
+  const time = format(zoned, "h:mm a");
+  return `${dayName} ${ordinal(day)} ${month} ${year} at ${time}`;
+}
 
 /**
  * Calculate the last call date: firstCallDate + 6 months + 2 weeks

@@ -1,11 +1,24 @@
 import { Resend } from "resend";
 
 interface ConfirmationEmailData {
-  to: string;
-  firstName: string;
-  dayAndTime: string;
+  student: {
+    firstName: string;
+    email: string;
+    joinCode: string;
+  };
+  slotInstance: {
+    weekNumber: number;
+    groupCode: string;
+  };
+  slot: {
+    displayName: string;
+  };
+  settings: {
+    showGroupCodes: boolean;
+  };
+  appUrl: string;
   firstCallDate: string;
-  zoomLink?: string | null;
+  lastCallDate: string;
 }
 
 export async function sendConfirmationEmail(
@@ -23,23 +36,33 @@ export async function sendConfirmationEmail(
   await resend.emails.send({
     from: "Property Know How Support <support@propertyknowhow.com>",
     replyTo: "support@propertyknowhow.com",
-    to: data.to,
+    to: data.student.email,
     subject: "Your Mentoring Call Details \u2014 Property Know How",
     html,
   });
 }
 
 function buildConfirmationHtml(data: ConfirmationEmailData): string {
-  const zoomButton = data.zoomLink
-    ? `
-      <tr>
-        <td style="padding: 0 0 24px 0;">
-          <a href="${data.zoomLink}" style="display: inline-block; background-color: #1B2A4A; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-            Join Zoom Meeting
-          </a>
-        </td>
-      </tr>`
-    : "";
+  const joinLink = `${data.appUrl}/join/${data.student.joinCode}`;
+
+  const groupCodeLine =
+    data.settings.showGroupCodes
+      ? `
+                      <tr>
+                        <td style="padding: 0 0 8px 0;">
+                          <p style="margin: 0; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Your Group
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 0 0 16px 0;">
+                          <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1B2A4A;">
+                            ${data.slotInstance.groupCode}
+                          </p>
+                        </td>
+                      </tr>`
+      : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -56,9 +79,7 @@ function buildConfirmationHtml(data: ConfirmationEmailData): string {
           <!-- Navy Header -->
           <tr>
             <td style="background-color: #1B2A4A; padding: 28px 32px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">
-                Property Know How
-              </h1>
+              <img src="${data.appUrl}/pkh_logo.png" alt="Property Know How" style="max-width: 180px; height: auto;" />
             </td>
           </tr>
 
@@ -69,14 +90,14 @@ function buildConfirmationHtml(data: ConfirmationEmailData): string {
                 <tr>
                   <td style="padding: 0 0 20px 0;">
                     <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #2D2D2D;">
-                      Hi ${data.firstName},
+                      Hi ${data.student.firstName},
                     </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 0 0 20px 0;">
                     <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #2D2D2D;">
-                      You&rsquo;re all set! Here are your mentoring call details:
+                      Your mentoring call is booked!
                     </p>
                   </td>
                 </tr>
@@ -84,28 +105,75 @@ function buildConfirmationHtml(data: ConfirmationEmailData): string {
                 <!-- Details Card -->
                 <tr>
                   <td style="padding: 0 0 24px 0;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #F5F0E8; border-radius: 8px; padding: 20px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #F5F0E8; border-radius: 8px;">
                       <tr>
                         <td style="padding: 20px;">
-                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Your Call Time
-                          </p>
-                          <p style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #1B2A4A;">
-                            ${data.dayAndTime}, fortnightly
-                          </p>
-                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">
-                            First Call
-                          </p>
-                          <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1B2A4A;">
-                            ${data.firstCallDate}
-                          </p>
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td style="padding: 0 0 8px 0;">
+                                <p style="margin: 0; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">
+                                  Your Call Time
+                                </p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 0 0 16px 0;">
+                                <p style="margin: 0; font-size: 20px; font-weight: 700; color: #1B2A4A;">
+                                  ${data.slot.displayName}, fortnightly
+                                </p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 0 0 8px 0;">
+                                <p style="margin: 0; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">
+                                  First Call
+                                </p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 0 0 16px 0;">
+                                <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1B2A4A;">
+                                  ${data.firstCallDate}
+                                </p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 0 0 8px 0;">
+                                <p style="margin: 0; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">
+                                  Last Call
+                                </p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 0 0 16px 0;">
+                                <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1B2A4A;">
+                                  ${data.lastCallDate}
+                                </p>
+                              </td>
+                            </tr>
+                            ${groupCodeLine}
+                          </table>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
 
-                ${zoomButton}
+                <!-- Join Button -->
+                <tr>
+                  <td style="padding: 0 0 8px 0;">
+                    <a href="${joinLink}" style="display: inline-block; background-color: #1B2A4A; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                      Join Your Mentoring Call
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 0 24px 0;">
+                    <p style="margin: 0; font-size: 13px; color: #6B7280;">
+                      Use this link every fortnight to join your call
+                    </p>
+                  </td>
+                </tr>
 
                 <!-- Gold Divider -->
                 <tr>

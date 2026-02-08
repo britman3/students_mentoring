@@ -4,18 +4,20 @@ interface ConfirmationScreenProps {
   firstName: string;
   dayAndTime: string;
   firstCallDate: string;
+  lastCallDate: string;
   groupCode?: string | null;
   showGroupCodes: boolean;
-  zoomLink?: string | null;
+  joinLink: string;
 }
 
 export default function ConfirmationScreen({
   firstName,
   dayAndTime,
   firstCallDate,
+  lastCallDate,
   groupCode,
   showGroupCodes,
-  zoomLink,
+  joinLink,
 }: ConfirmationScreenProps) {
   return (
     <div className="space-y-6 print:space-y-4">
@@ -23,15 +25,15 @@ export default function ConfirmationScreen({
       <div className="text-center">
         <div className="mb-3 text-5xl">{"\u2705"}</div>
         <h1 className="text-2xl font-bold text-navy-dark">
-          You&rsquo;re all set, {firstName}!
+          You&rsquo;re all set!
         </h1>
         <p className="mt-2 text-warm-grey">
-          Your mentoring slot has been confirmed.
+          Your mentoring slot has been confirmed, {firstName}.
         </p>
       </div>
 
       {/* Details card */}
-      <div className="rounded-xl bg-sand p-6 space-y-4">
+      <div className="rounded-xl bg-[#F3F0EA] p-6 space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-warm-grey">
             Your Call Time
@@ -50,6 +52,15 @@ export default function ConfirmationScreen({
           </p>
         </div>
 
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-warm-grey">
+            Last Mentoring Call
+          </p>
+          <p className="mt-1 text-lg font-semibold text-navy">
+            {lastCallDate}
+          </p>
+        </div>
+
         {showGroupCodes && groupCode && (
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-warm-grey">
@@ -61,21 +72,14 @@ export default function ConfirmationScreen({
           </div>
         )}
 
-        {zoomLink && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-warm-grey">
-              Zoom Link
-            </p>
-            <a
-              href={zoomLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-block rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-dark"
-            >
-              Join Zoom Meeting
-            </a>
-          </div>
-        )}
+        <div className="pt-2">
+          <a
+            href={joinLink}
+            className="inline-block rounded-lg bg-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-navy-light"
+          >
+            Join Your Mentoring Call
+          </a>
+        </div>
       </div>
 
       {/* Gold divider */}
@@ -83,9 +87,11 @@ export default function ConfirmationScreen({
 
       {/* Locked notice */}
       <div className="rounded-lg border border-sand-dark bg-warm-white p-4 text-center">
+        <p className="text-sm font-medium text-navy-dark mb-1">
+          Your selection is locked.
+        </p>
         <p className="text-sm text-warm-grey">
-          Your selection is locked. If you need to change this, contact your
-          enrolment coach or{" "}
+          If you need to make changes, contact{" "}
           <a
             href="mailto:support@propertyknowhow.com"
             className="font-medium text-navy underline"
