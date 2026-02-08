@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Clock,
   Users,
-  Link as LinkIcon,
   BarChart3,
   Settings,
   LogOut,
@@ -19,7 +18,6 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/slots", label: "Slots", icon: Clock },
   { href: "/admin/students", label: "Students", icon: Users },
-  { href: "/admin/links", label: "Magic Links", icon: LinkIcon },
   { href: "/admin/stats", label: "Stats", icon: BarChart3 },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

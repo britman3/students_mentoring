@@ -75,7 +75,7 @@ export default function ConfirmationScreen({
         <div className="pt-2">
           <a
             href={joinLink}
-            className="inline-block rounded-lg bg-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-navy-light"
+            className="inline-block rounded-lg bg-gold px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-gold-dark"
           >
             Join Your Mentoring Call
           </a>
@@ -91,7 +91,7 @@ export default function ConfirmationScreen({
           Your selection is locked.
         </p>
         <p className="text-sm text-warm-grey">
-          If you need to make changes, contact{" "}
+          If you need to change this, contact{" "}
           <a
             href="mailto:support@propertyknowhow.com"
             className="font-medium text-navy underline"

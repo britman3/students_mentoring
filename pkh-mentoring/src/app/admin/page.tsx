@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Users, Calendar, Clock, UserPlus, Plus, Link as LinkIcon, Download } from "lucide-react";
+import { Users, Calendar, Clock, UserPlus, Plus, BarChart3 } from "lucide-react";
 
 interface Stats {
   totalStudents: number;
@@ -105,17 +105,14 @@ export default function AdminDashboardPage() {
 
       <div className="flex flex-wrap gap-3">
         <Link href="/admin/slots" className="flex items-center gap-2 bg-navy hover:bg-navy-light text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-          <Plus size={16} /> Add Slot
+          <Plus size={16} /> Manage Slots
         </Link>
-        <Link href="/admin/links" className="flex items-center gap-2 bg-navy hover:bg-navy-light text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-          <LinkIcon size={16} /> Generate Links
+        <Link href="/admin/students" className="flex items-center gap-2 bg-navy hover:bg-navy-light text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+          <Users size={16} /> View Students
         </Link>
-        <button
-          onClick={() => window.location.href = "/api/admin/links?format=csv"}
-          className="flex items-center gap-2 bg-navy hover:bg-navy-light text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
-        >
-          <Download size={16} /> Export CSV
-        </button>
+        <Link href="/admin/stats" className="flex items-center gap-2 bg-navy hover:bg-navy-light text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+          <BarChart3 size={16} /> View Stats
+        </Link>
       </div>
     </div>
   );
