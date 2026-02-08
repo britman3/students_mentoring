@@ -1,238 +1,247 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  MagicLinkStatus,
-  StudentStatus,
-  ActivityType,
-  WaitlistStatus,
-} from "@prisma/client";
+import { ActivityType, StudentStatus } from "@prisma/client";
+import { customAlphabet } from "nanoid";
 import { assignStudentToSlot } from "@/lib/assignment";
+import { getLastCallDate, formatUKDate } from "@/lib/dates";
 import { getDayName, formatDisplayTime } from "@/lib/display";
 import { sendConfirmationEmail } from "@/lib/email";
 import { sendSlackNotification } from "@/lib/slack";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
-import { addMonths } from "date-fns";
 
-interface EnrolRequestBody {
-  token: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  slotId: string;
+const generateJoinCode = customAlphabet(
+  "abcdefghijklmnopqrstuvwxyz0123456789",
+  6
+);
+
+interface EnrolBody {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  slotId?: string;
+  closerName?: string;
   waitlistSlotId?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: EnrolRequestBody = await request.json();
-    const { token, firstName, lastName, email, phone, slotId, waitlistSlotId } =
-      body;
+    const body: EnrolBody = await request.json();
+
+    const firstName = body.firstName?.trim();
+    const lastName = body.lastName?.trim();
+    const email = body.email?.trim().toLowerCase();
+    const phone = body.phone?.trim();
+    const slotId = body.slotId?.trim();
+    const closerName = body.closerName?.trim() || null;
+    const waitlistSlotId = body.waitlistSlotId?.trim() || null;
 
     // Validate required fields
-    if (!token || !firstName || !lastName || !email || !phone || !slotId) {
+    if (!firstName || !lastName || !email || !phone || !slotId) {
       return NextResponse.json(
-        { error: "All fields are required." },
+        { error: "All fields are required: firstName, lastName, email, phone, slotId" },
         { status: 400 }
       );
     }
 
-    // Validate token
-    const magicLink = await prisma.magicLink.findUnique({
-      where: { token },
-    });
-
-    if (!magicLink) {
-      return NextResponse.json(
-        { error: "Invalid enrolment link." },
-        { status: 404 }
-      );
-    }
-
-    if (
-      magicLink.status === MagicLinkStatus.COMPLETED ||
-      magicLink.status === MagicLinkStatus.USED
-    ) {
-      return NextResponse.json(
-        { error: "This enrolment link has already been used." },
-        { status: 409 }
-      );
-    }
-
-    if (
-      magicLink.status === MagicLinkStatus.EXPIRED ||
-      magicLink.status === MagicLinkStatus.REVOKED
-    ) {
-      return NextResponse.json(
-        { error: "This enrolment link is no longer valid." },
-        { status: 410 }
-      );
-    }
-
-    if (magicLink.expiresAt && magicLink.expiresAt < new Date()) {
-      return NextResponse.json(
-        { error: "This enrolment link has expired." },
-        { status: 410 }
-      );
-    }
-
-    // Check if student already exists
+    // Check if email already registered
     const existingStudent = await prisma.student.findUnique({
-      where: { email: email.toLowerCase().trim() },
-    });
-
-    if (existingStudent && existingStudent.status !== StudentStatus.PROSPECT) {
-      return NextResponse.json(
-        { error: "A student with this email address is already registered." },
-        { status: 409 }
-      );
-    }
-
-    // Run auto-assignment logic
-    const assignment = await assignStudentToSlot(slotId);
-
-    let student;
-
-    if (existingStudent && existingStudent.status === StudentStatus.PROSPECT) {
-      // PROSPECT exists from sheet sync — upgrade to SLOT_SELECTED
-      student = await prisma.student.update({
-        where: { id: existingStudent.id },
-        data: {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          phone: phone.trim(),
-          status: StudentStatus.SLOT_SELECTED,
-          slotInstanceId: assignment.slotInstanceId,
-          firstCallDate: assignment.firstCallDate,
-          magicLinkId: magicLink.id,
+      where: { email },
+      include: {
+        slotInstance: {
+          include: { slot: true },
         },
-      });
-    } else {
-      // No existing student — create new
-      student = await prisma.student.create({
-        data: {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.toLowerCase().trim(),
-          phone: phone.trim(),
-          status: StudentStatus.SLOT_SELECTED,
-          slotInstanceId: assignment.slotInstanceId,
-          firstCallDate: assignment.firstCallDate,
-          magicLinkId: magicLink.id,
-        },
-      });
-    }
-
-    // Update magic link to COMPLETED
-    await prisma.magicLink.update({
-      where: { id: magicLink.id },
-      data: {
-        status: MagicLinkStatus.COMPLETED,
-        usedAt: new Date(),
       },
     });
 
-    // Create activity log entry
+    if (existingStudent && existingStudent.slotInstance) {
+      const settings = await prisma.settings.findFirst();
+      const slot = existingStudent.slotInstance.slot;
+      const dayTime = `${getDayName(slot.dayOfWeek)} ${formatDisplayTime(slot.time)}`;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3099";
+
+      return NextResponse.json({
+        success: true,
+        alreadyEnrolled: true,
+        confirmation: {
+          firstName: existingStudent.firstName,
+          dayTime,
+          firstCallDate: existingStudent.firstCallDate
+            ? formatUKDate(existingStudent.firstCallDate)
+            : null,
+          lastCallDate: existingStudent.firstCallDate
+            ? formatUKDate(getLastCallDate(existingStudent.firstCallDate))
+            : null,
+          groupCode: existingStudent.slotInstance.groupCode,
+          joinCode: existingStudent.joinCode,
+          joinLink: `${appUrl}/join/${existingStudent.joinCode}`,
+          showGroupCodes: settings?.showGroupCodes ?? false,
+        },
+      });
+    }
+
+    // Handle closer
+    let closerId: string | null = null;
+    if (closerName) {
+      let closer = await prisma.closer.findFirst({
+        where: { firstName: { equals: closerName, mode: "insensitive" } },
+      });
+
+      if (!closer) {
+        closer = await prisma.closer.create({
+          data: { firstName: closerName },
+        });
+      }
+
+      closerId = closer.id;
+    }
+
+    // Generate unique joinCode
+    let joinCode = generateJoinCode();
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await prisma.student.findUnique({ where: { joinCode } });
+      if (!existing) break;
+      joinCode = generateJoinCode();
+      attempts++;
+    }
+
+    // Run auto-assignment to get the less-full week instance
+    const assignment = await assignStudentToSlot(slotId);
+
+    // Get settings for capacity etc
+    const settings = await prisma.settings.findFirst();
+
+    // Get slot details
+    const slot = await prisma.slot.findUnique({ where: { id: slotId } });
+    if (!slot) {
+      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    }
+
+    // Create student record
+    const student = await prisma.student.create({
+      data: {
+        firstName,
+        lastName,
+        email,
+        phone,
+        slotInstanceId: assignment.slotInstanceId,
+        firstCallDate: assignment.firstCallDate,
+        joinCode,
+        closerId,
+        status: StudentStatus.SLOT_SELECTED,
+        enrolmentDate: new Date(),
+      },
+    });
+
+    // Create activity log
     await prisma.activityLog.create({
       data: {
         studentId: student.id,
         type: ActivityType.SLOT_ASSIGNED,
-        description: "Slot assigned automatically",
-        metadata: {
-          createdByType: "system",
-          slotId,
-          slotInstanceId: assignment.slotInstanceId,
-          weekNumber: assignment.weekNumber,
-          groupLabel: assignment.groupLabel,
-        },
+        title: "Slot assigned via enrolment",
+        createdByType: "system",
       },
     });
 
-    // Create waitlist entry if requested
+    // Handle waitlist
     if (waitlistSlotId && waitlistSlotId !== slotId) {
-      await prisma.waitlistEntry.create({
-        data: {
-          studentId: student.id,
-          slotId: waitlistSlotId,
-          status: WaitlistStatus.WAITING,
-          expiresAt: addMonths(new Date(), 2),
-        },
-      });
-    }
+      try {
+        // Find the less-full instance for the waitlist slot
+        const waitlistAssignment = await assignStudentToSlot(waitlistSlotId);
 
-    // Fetch slot details for response
-    const slot = await prisma.slot.findUnique({
-      where: { id: slotId },
-    });
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + 2);
 
-    const settings = await prisma.settings.findFirst();
-
-    const dayName = slot ? getDayName(slot.dayOfWeek) : "";
-    const displayTime = slot ? formatDisplayTime(slot.time) : "";
-
-    const londonDate = toZonedTime(assignment.firstCallDate, "Europe/London");
-    const formattedFirstCallDate = format(
-      londonDate,
-      "EEEE do MMMM yyyy 'at' h:mm a"
-    );
-
-    // Send confirmation email (best effort)
-    sendConfirmationEmail({
-      to: student.email,
-      firstName: student.firstName,
-      dayAndTime: `${dayName} ${displayTime}`,
-      firstCallDate: formattedFirstCallDate,
-      zoomLink: slot?.zoomLink,
-    }).catch((err) => {
-      console.error("Failed to send confirmation email:", err);
-    });
-
-    // Send Slack notification (best effort)
-    sendSlackNotification({
-      studentName: `${student.firstName} ${student.lastName}`,
-      email: student.email,
-      dayName,
-      time: displayTime,
-      weekNumber: assignment.weekNumber,
-      groupLabel: assignment.groupLabel,
-      firstCallDate: formattedFirstCallDate,
-    }).catch((err) => {
-      console.error("Failed to send Slack notification:", err);
-    });
-
-    return NextResponse.json({
-      student: {
-        firstName: student.firstName,
-        lastName: student.lastName,
-        email: student.email,
-      },
-      slot: {
-        dayName,
-        displayTime,
-        zoomLink: slot?.zoomLink ?? null,
-      },
-      firstCallDate: formattedFirstCallDate,
-      groupLabel: assignment.groupLabel,
-      showGroupLabels: settings?.showGroupLabels ?? false,
-    });
-  } catch (error) {
-    console.error("Enrolment error:", error);
-
-    if (error instanceof Error) {
-      if (error.message.includes("fully booked")) {
-        return NextResponse.json(
-          {
-            error:
-              "This slot is now fully booked. Please go back and select another slot.",
+        await prisma.waitlistEntry.create({
+          data: {
+            studentId: student.id,
+            slotInstanceId: waitlistAssignment.slotInstanceId,
+            expiresAt,
+            status: "WAITING",
           },
-          { status: 409 }
-        );
+        });
+
+        await prisma.activityLog.create({
+          data: {
+            studentId: student.id,
+            type: ActivityType.WAITLIST_JOINED,
+            title: "Joined waitlist",
+            createdByType: "system",
+          },
+        });
+      } catch {
+        // Waitlist failure should not block enrolment
+        console.warn("Failed to create waitlist entry, continuing without it");
       }
     }
 
+    // Format dates for response and notifications
+    const firstCallDateFormatted = formatUKDate(assignment.firstCallDate);
+    const lastCallDate = getLastCallDate(assignment.firstCallDate);
+    const lastCallDateFormatted = formatUKDate(lastCallDate);
+    const dayTime = `${getDayName(slot.dayOfWeek)} ${formatDisplayTime(slot.time)}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3099";
+
+    // Send confirmation email (don't block on failure)
+    try {
+      await sendConfirmationEmail({
+        student: {
+          firstName,
+          email,
+          joinCode,
+        },
+        slotInstance: {
+          weekNumber: assignment.weekNumber,
+          groupCode: assignment.groupCode,
+        },
+        slot: {
+          displayName: slot.displayName,
+        },
+        settings: {
+          showGroupCodes: settings?.showGroupCodes ?? false,
+        },
+        appUrl,
+        firstCallDate: firstCallDateFormatted,
+        lastCallDate: lastCallDateFormatted,
+      });
+    } catch (error) {
+      console.error("Failed to send confirmation email:", error);
+    }
+
+    // Send Slack notification (don't block on failure)
+    try {
+      await sendSlackNotification({
+        studentName: `${firstName} ${lastName}`,
+        email,
+        closerName,
+        slotDisplayName: slot.displayName,
+        weekNumber: assignment.weekNumber,
+        groupCode: assignment.groupCode,
+        firstCallDate: firstCallDateFormatted,
+        lastCallDate: lastCallDateFormatted,
+      });
+    } catch (error) {
+      console.error("Failed to send Slack notification:", error);
+    }
+
+    return NextResponse.json({
+      success: true,
+      confirmation: {
+        firstName,
+        dayTime,
+        firstCallDate: firstCallDateFormatted,
+        lastCallDate: lastCallDateFormatted,
+        groupCode: assignment.groupCode,
+        joinCode,
+        joinLink: `${appUrl}/join/${joinCode}`,
+        showGroupCodes: settings?.showGroupCodes ?? false,
+        zoomLink: slot.zoomLink,
+      },
+    });
+  } catch (error) {
+    console.error("Enrol error:", error);
     return NextResponse.json(
-      { error: "Something went wrong. Please try again." },
+      { error: error instanceof Error ? error.message : "Something went wrong" },
       { status: 500 }
     );
   }

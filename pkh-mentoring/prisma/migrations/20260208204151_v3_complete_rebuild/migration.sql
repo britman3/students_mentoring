@@ -2,10 +2,10 @@
 CREATE TYPE "StudentStatus" AS ENUM ('PROSPECT', 'ENROLLED', 'SLOT_SELECTED', 'ACTIVE', 'PAUSED', 'COMPLETED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "PaymentPlan" AS ENUM ('FULL', 'SPLIT_2', 'SPLIT_3', 'SPLIT_4', 'MONTHLY');
+CREATE TYPE "PaymentPlan" AS ENUM ('FULL', 'SPLIT_2', 'SPLIT_3', 'SPLIT_4', 'MONTHLY', 'CUSTOM');
 
 -- CreateEnum
-CREATE TYPE "PaymentMethod" AS ENUM ('STRIPE', 'BANK_TRANSFER', 'CASH', 'OTHER');
+CREATE TYPE "PaymentMethod" AS ENUM ('STRIPE', 'BANK_TRANSFER', 'CASH', 'PAYPAL', 'OTHER');
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
@@ -14,18 +14,17 @@ CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED
 CREATE TYPE "WaitlistStatus" AS ENUM ('WAITING', 'OFFERED', 'ACCEPTED', 'EXPIRED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "MagicLinkStatus" AS ENUM ('UNUSED', 'SENT', 'USED', 'EXPIRED', 'REVOKED');
-
--- CreateEnum
-CREATE TYPE "ActivityType" AS ENUM ('STUDENT_CREATED', 'SLOT_SELECTED', 'PAYMENT_RECEIVED', 'STATUS_CHANGED', 'EMAIL_SENT', 'NOTE_ADDED', 'MAGIC_LINK_GENERATED', 'MAGIC_LINK_USED', 'WAITLIST_JOINED', 'WAITLIST_OFFERED', 'ARRANGEMENT_CREATED');
+CREATE TYPE "ActivityType" AS ENUM ('STUDENT_CREATED', 'SLOT_SELECTED', 'SLOT_ASSIGNED', 'SLOT_REASSIGNED', 'PAYMENT_RECEIVED', 'STATUS_CHANGED', 'EMAIL_SENT', 'EMAIL_RESENT', 'NOTE_ADDED', 'WAITLIST_JOINED', 'WAITLIST_OFFERED', 'ARRANGEMENT_CREATED', 'SALE_DATA_SYNCED', 'ATTENDANCE_RECORDED');
 
 -- CreateTable
 CREATE TABLE "Settings" (
-    "id" TEXT NOT NULL,
+    "id" INTEGER NOT NULL DEFAULT 1,
     "capacity" INTEGER NOT NULL DEFAULT 12,
     "anchorDate" TIMESTAMP(3) NOT NULL DEFAULT '2026-01-06 00:00:00 +00:00',
-    "showGroupLabels" BOOLEAN NOT NULL DEFAULT false,
+    "showGroupCodes" BOOLEAN NOT NULL DEFAULT false,
     "adminPasswordHash" TEXT NOT NULL,
+    "slackWebhookUrl" TEXT,
+    "resendApiKey" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -37,8 +36,11 @@ CREATE TABLE "Slot" (
     "id" TEXT NOT NULL,
     "dayOfWeek" INTEGER NOT NULL,
     "time" TEXT NOT NULL,
-    "sortOrder" INTEGER NOT NULL,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "displayName" TEXT NOT NULL,
+    "zoomLink" TEXT,
+    "isOpen" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "gridPosition" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -50,8 +52,7 @@ CREATE TABLE "SlotInstance" (
     "id" TEXT NOT NULL,
     "slotId" TEXT NOT NULL,
     "weekNumber" INTEGER NOT NULL,
-    "groupLabel" TEXT NOT NULL,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "groupCode" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -64,19 +65,23 @@ CREATE TABLE "Student" (
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "phone" TEXT,
-    "status" "StudentStatus" NOT NULL DEFAULT 'PROSPECT',
+    "phone" TEXT NOT NULL,
     "slotInstanceId" TEXT,
     "firstCallDate" TIMESTAMP(3),
-    "magicLinkId" TEXT,
-    "notes" TEXT,
-    "totalAmount" DOUBLE PRECISION,
-    "depositAmount" DOUBLE PRECISION,
+    "joinCode" TEXT,
+    "status" "StudentStatus" NOT NULL DEFAULT 'PROSPECT',
+    "studentNumber" TEXT,
+    "programmeName" TEXT,
+    "totalAmount" DECIMAL(10,2),
+    "depositAmount" DECIMAL(10,2),
     "paymentPlanType" "PaymentPlan",
+    "referralSource" TEXT,
     "closerId" TEXT,
     "saleDate" TIMESTAMP(3),
-    "referralSource" TEXT,
-    "programmeId" TEXT,
+    "enrolmentDate" TIMESTAMP(3),
+    "startDate" TIMESTAMP(3),
+    "completionDate" TIMESTAMP(3),
+    "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -87,11 +92,9 @@ CREATE TABLE "Student" (
 CREATE TABLE "WaitlistEntry" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
-    "slotId" TEXT NOT NULL,
+    "slotInstanceId" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
     "status" "WaitlistStatus" NOT NULL DEFAULT 'WAITING',
-    "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "offeredAt" TIMESTAMP(3),
-    "respondedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -99,25 +102,25 @@ CREATE TABLE "WaitlistEntry" (
 );
 
 -- CreateTable
-CREATE TABLE "MagicLink" (
+CREATE TABLE "Attendance" (
     "id" TEXT NOT NULL,
-    "token" TEXT NOT NULL,
-    "status" "MagicLinkStatus" NOT NULL DEFAULT 'UNUSED',
-    "studentId" TEXT,
-    "expiresAt" TIMESTAMP(3),
-    "usedAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "accessedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
 
-    CONSTRAINT "MagicLink_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Attendance_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Closer" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "passwordHash" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -128,12 +131,16 @@ CREATE TABLE "Closer" (
 CREATE TABLE "Payment" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
-    "amount" DOUBLE PRECISION NOT NULL,
-    "method" "PaymentMethod" NOT NULL,
+    "amount" DECIMAL(10,2) NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'GBP',
+    "method" "PaymentMethod",
     "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
-    "reference" TEXT,
     "dueDate" TIMESTAMP(3),
-    "paidAt" TIMESTAMP(3),
+    "paidDate" TIMESTAMP(3),
+    "reference" TEXT,
+    "notes" TEXT,
+    "instalmentNumber" INTEGER,
+    "totalInstalments" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -145,9 +152,10 @@ CREATE TABLE "Arrangement" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "agreedDate" TIMESTAMP(3) NOT NULL,
+    "agreedBy" TEXT,
+    "agreedDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "notes" TEXT,
-    "isResolved" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -159,7 +167,10 @@ CREATE TABLE "ActivityLog" (
     "id" TEXT NOT NULL,
     "studentId" TEXT,
     "type" "ActivityType" NOT NULL,
-    "description" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "createdByType" TEXT,
+    "closerId" TEXT,
     "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -170,8 +181,9 @@ CREATE TABLE "ActivityLog" (
 CREATE TABLE "Programme" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "description" TEXT,
+    "price" DECIMAL(10,2),
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "price" DOUBLE PRECISION,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -188,34 +200,46 @@ CREATE UNIQUE INDEX "SlotInstance_slotId_weekNumber_key" ON "SlotInstance"("slot
 CREATE UNIQUE INDEX "Student_email_key" ON "Student"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MagicLink_token_key" ON "MagicLink"("token");
+CREATE UNIQUE INDEX "Student_joinCode_key" ON "Student"("joinCode");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Student_studentNumber_key" ON "Student"("studentNumber");
+
+-- CreateIndex
+CREATE INDEX "Attendance_studentId_accessedAt_idx" ON "Attendance"("studentId", "accessedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Closer_email_key" ON "Closer"("email");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "Programme_name_key" ON "Programme"("name");
+
 -- AddForeignKey
-ALTER TABLE "SlotInstance" ADD CONSTRAINT "SlotInstance_slotId_fkey" FOREIGN KEY ("slotId") REFERENCES "Slot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SlotInstance" ADD CONSTRAINT "SlotInstance_slotId_fkey" FOREIGN KEY ("slotId") REFERENCES "Slot"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Student" ADD CONSTRAINT "Student_slotInstanceId_fkey" FOREIGN KEY ("slotInstanceId") REFERENCES "SlotInstance"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Student" ADD CONSTRAINT "Student_magicLinkId_fkey" FOREIGN KEY ("magicLinkId") REFERENCES "MagicLink"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Student" ADD CONSTRAINT "Student_closerId_fkey" FOREIGN KEY ("closerId") REFERENCES "Closer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Student" ADD CONSTRAINT "Student_programmeId_fkey" FOREIGN KEY ("programmeId") REFERENCES "Programme"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_slotInstanceId_fkey" FOREIGN KEY ("slotInstanceId") REFERENCES "SlotInstance"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Payment" ADD CONSTRAINT "Payment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Arrangement" ADD CONSTRAINT "Arrangement_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ActivityLog" ADD CONSTRAINT "ActivityLog_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Arrangement" ADD CONSTRAINT "Arrangement_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ActivityLog" ADD CONSTRAINT "ActivityLog_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ActivityLog" ADD CONSTRAINT "ActivityLog_closerId_fkey" FOREIGN KEY ("closerId") REFERENCES "Closer"("id") ON DELETE SET NULL ON UPDATE CASCADE;

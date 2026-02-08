@@ -8,11 +8,12 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { zoomLink, isActive } = body;
+    const { zoomLink, isOpen, isActive } = body;
 
     const updateData: Record<string, unknown> = {};
     if (zoomLink !== undefined) updateData.zoomLink = zoomLink || null;
-    if (isActive !== undefined) updateData.isActive = isActive;
+    if (isOpen !== undefined) updateData.isOpen = isOpen;
+    else if (isActive !== undefined) updateData.isOpen = isActive;
 
     const slot = await prisma.slot.update({
       where: { id },

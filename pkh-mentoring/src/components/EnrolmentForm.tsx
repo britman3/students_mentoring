@@ -13,11 +13,15 @@ interface AvailableSlot {
 }
 
 interface ConfirmationData {
-  student: { firstName: string; lastName: string; email: string };
-  slot: { dayName: string; displayTime: string; zoomLink: string | null };
+  firstName: string;
+  dayTime: string;
   firstCallDate: string;
-  groupLabel: string;
-  showGroupLabels: boolean;
+  lastCallDate: string;
+  groupCode: string;
+  joinCode: string;
+  joinLink: string;
+  showGroupCodes: boolean;
+  zoomLink?: string | null;
 }
 
 interface FormErrors {
@@ -31,19 +35,19 @@ interface FormErrors {
 }
 
 interface EnrolmentFormProps {
-  token: string;
   initialFirstName?: string | null;
   initialLastName?: string | null;
   initialEmail?: string | null;
   initialPhone?: string | null;
+  closer?: string | null;
 }
 
 export default function EnrolmentForm({
-  token,
   initialFirstName,
   initialLastName,
   initialEmail,
   initialPhone,
+  closer,
 }: EnrolmentFormProps) {
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
@@ -65,11 +69,11 @@ export default function EnrolmentForm({
   );
 
   const isDirty =
-    firstName !== "" ||
-    lastName !== "" ||
-    phone !== "" ||
-    email !== "" ||
-    confirmEmail !== "" ||
+    firstName !== (initialFirstName || "") ||
+    lastName !== (initialLastName || "") ||
+    phone !== (initialPhone || "") ||
+    email !== (initialEmail || "") ||
+    confirmEmail !== (initialEmail || "") ||
     selectedSlotId !== "";
 
   // Fetch available slots
@@ -141,12 +145,12 @@ export default function EnrolmentForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
           slotId: selectedSlotId,
+          closerName: closer || undefined,
           waitlistSlotId: wantWaitlist ? waitlistSlotId : undefined,
         }),
       });
@@ -158,7 +162,7 @@ export default function EnrolmentForm({
         return;
       }
 
-      setConfirmation(data);
+      setConfirmation(data.confirmation);
     } catch {
       setErrors({
         general: "A network error occurred. Please try again.",
@@ -172,12 +176,13 @@ export default function EnrolmentForm({
   if (confirmation) {
     return (
       <ConfirmationScreen
-        firstName={confirmation.student.firstName}
-        dayAndTime={`${confirmation.slot.dayName} ${confirmation.slot.displayTime}`}
+        firstName={confirmation.firstName}
+        dayAndTime={confirmation.dayTime}
         firstCallDate={confirmation.firstCallDate}
-        groupLabel={confirmation.groupLabel}
-        showGroupLabels={confirmation.showGroupLabels}
-        zoomLink={confirmation.slot.zoomLink}
+        lastCallDate={confirmation.lastCallDate}
+        groupCode={confirmation.groupCode}
+        showGroupCodes={confirmation.showGroupCodes}
+        joinLink={confirmation.joinLink}
       />
     );
   }
@@ -391,7 +396,7 @@ export default function EnrolmentForm({
             />
             <div>
               <p className="font-medium text-navy">
-                Join a waitlist for another slot
+                I&rsquo;d also like to join the waitlist for another slot
               </p>
               <p className="text-sm text-warm-grey">
                 If a spot opens up in your preferred slot, we&rsquo;ll let you

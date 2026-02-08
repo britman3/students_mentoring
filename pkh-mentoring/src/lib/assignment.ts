@@ -5,7 +5,7 @@ import { StudentStatus } from "@prisma/client";
 interface AssignmentResult {
   slotInstanceId: string;
   weekNumber: 1 | 2;
-  groupLabel: string;
+  groupCode: string;
   firstCallDate: Date;
 }
 
@@ -33,7 +33,6 @@ export async function assignStudentToSlot(
     where: { id: slotId },
     include: {
       instances: {
-        where: { isActive: true },
         include: {
           students: {
             where: {
@@ -108,7 +107,7 @@ export async function assignStudentToSlot(
   return {
     slotInstanceId: chosen.id,
     weekNumber,
-    groupLabel: chosen.groupLabel,
+    groupCode: chosen.groupCode,
     firstCallDate,
   };
 }
