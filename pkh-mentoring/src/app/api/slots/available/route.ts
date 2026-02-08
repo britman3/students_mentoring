@@ -16,11 +16,10 @@ export async function GET() {
     const capacity = settings.capacity;
 
     const slots = await prisma.slot.findMany({
-      where: { isActive: true },
+      where: { isOpen: true },
       orderBy: { sortOrder: "asc" },
       include: {
         instances: {
-          where: { isActive: true },
           include: {
             students: {
               where: {

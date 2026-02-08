@@ -39,14 +39,6 @@ export async function GET(request: NextRequest) {
         slotInstance: {
           include: { slot: true },
         },
-        magicLink: {
-          select: {
-            id: true,
-            token: true,
-            status: true,
-            createdAt: true,
-          },
-        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -71,16 +63,8 @@ export async function GET(request: NextRequest) {
           }
         : null,
       week: s.slotInstance?.weekNumber ?? null,
-      group: s.slotInstance?.groupLabel ?? null,
+      group: s.slotInstance?.groupCode ?? null,
       slotInstanceId: s.slotInstanceId,
-      magicLink: s.magicLink
-        ? {
-            id: s.magicLink.id,
-            token: s.magicLink.token,
-            status: s.magicLink.status,
-            createdAt: s.magicLink.createdAt,
-          }
-        : null,
     }));
 
     return NextResponse.json(result);

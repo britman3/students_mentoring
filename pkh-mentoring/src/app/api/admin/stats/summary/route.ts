@@ -19,11 +19,9 @@ export async function GET() {
           where: { status: "WAITING" },
         }),
         prisma.slot.findMany({
-          where: { isActive: true },
+          where: { isOpen: true },
           include: {
-            instances: {
-              where: { isActive: true },
-            },
+            instances: true,
           },
         }),
         prisma.student.findMany({
@@ -60,7 +58,7 @@ export async function GET() {
           ? `${getDayName(s.slotInstance.slot.dayOfWeek)} ${formatDisplayTime(s.slotInstance.slot.time)}`
           : null,
         week: s.slotInstance?.weekNumber ?? null,
-        group: s.slotInstance?.groupLabel ?? null,
+        group: s.slotInstance?.groupCode ?? null,
         enrolledAt: s.createdAt,
       })),
     });

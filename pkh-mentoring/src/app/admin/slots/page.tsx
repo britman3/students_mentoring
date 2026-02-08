@@ -6,7 +6,7 @@ import { Plus, Copy, X, Check } from "lucide-react";
 interface SlotInstance {
   id: string;
   weekNumber: number;
-  groupLabel: string;
+  groupCode: string;
   capacity: number;
   studentCount: number;
 }
@@ -19,7 +19,7 @@ interface Slot {
   displayTime: string;
   displayName: string;
   zoomLink: string | null;
-  isActive: boolean;
+  isOpen: boolean;
   instances: SlotInstance[];
   totalStudents: number;
   totalCapacity: number;
@@ -118,15 +118,15 @@ export default function SlotsPage() {
                       ) : <span className="text-warm-grey">—</span>}
                     </td>
                     <td className="px-6 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${slot.isActive ? "bg-success/10 text-success" : "bg-error/10 text-error"}`}>
-                        {slot.isActive ? "Open" : "Closed"}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${slot.isOpen ? "bg-success/10 text-success" : "bg-error/10 text-error"}`}>
+                        {slot.isOpen ? "Open" : "Closed"}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-sm text-charcoal">
-                      {w1 ? <span>Group {w1.groupLabel}: {w1.studentCount}/{w1.capacity}</span> : "—"}
+                      {w1 ? <span>Group {w1.groupCode}: {w1.studentCount}/{w1.capacity}</span> : "—"}
                     </td>
                     <td className="px-6 py-3 text-sm text-charcoal">
-                      {w2 ? <span>Group {w2.groupLabel}: {w2.studentCount}/{w2.capacity}</span> : "—"}
+                      {w2 ? <span>Group {w2.groupCode}: {w2.studentCount}/{w2.capacity}</span> : "—"}
                     </td>
                     <td className="px-6 py-3 text-sm font-medium text-navy">{slot.totalStudents}</td>
                     <td className="px-6 py-3">
@@ -213,7 +213,7 @@ function AddSlotModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
 function EditSlotModal({ slot, onClose, onUpdated }: { slot: Slot; onClose: () => void; onUpdated: () => void }) {
   const [zoomLink, setZoomLink] = useState(slot.zoomLink || "");
-  const [isActive, setIsActive] = useState(slot.isActive);
+  const [isOpen, setIsActive] = useState(slot.isOpen);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -225,7 +225,7 @@ function EditSlotModal({ slot, onClose, onUpdated }: { slot: Slot; onClose: () =
       const res = await fetch(`/api/admin/slots/${slot.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ zoomLink, isActive }),
+        body: JSON.stringify({ zoomLink, isOpen }),
       });
       if (res.ok) { onUpdated(); } else { const data = await res.json(); setError(data.error || "Failed to update slot"); }
     } catch { setError("Something went wrong"); } finally { setSaving(false); }
@@ -245,10 +245,10 @@ function EditSlotModal({ slot, onClose, onUpdated }: { slot: Slot; onClose: () =
           </div>
           <div className="flex items-center gap-3">
             <label className="text-sm font-medium text-charcoal">Status</label>
-            <button type="button" onClick={() => setIsActive(!isActive)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isActive ? "bg-success" : "bg-sand-dark"}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isActive ? "translate-x-6" : "translate-x-1"}`} />
+            <button type="button" onClick={() => setIsActive(!isOpen)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isOpen ? "bg-success" : "bg-sand-dark"}`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isOpen ? "translate-x-6" : "translate-x-1"}`} />
             </button>
-            <span className="text-sm text-charcoal">{isActive ? "Open" : "Closed"}</span>
+            <span className="text-sm text-charcoal">{isOpen ? "Open" : "Closed"}</span>
           </div>
           {error && <div className="p-3 bg-error/10 border border-error/20 rounded-md text-error text-sm">{error}</div>}
           <div className="flex justify-end gap-3 pt-2">

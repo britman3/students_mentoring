@@ -160,11 +160,11 @@ export async function POST(request: NextRequest) {
     let closerId: string | null = null;
 
     if (body.closerName?.trim()) {
-      const closerName = body.closerName.trim();
+      const closerFirstName = body.closerName.trim();
 
-      // Search by name (case-insensitive)
+      // Search by firstName (case-insensitive)
       let closer = await prisma.closer.findFirst({
-        where: { name: { equals: closerName, mode: "insensitive" } },
+        where: { firstName: { equals: closerFirstName, mode: "insensitive" } },
       });
 
       if (closer) {
@@ -177,10 +177,10 @@ export async function POST(request: NextRequest) {
         }
         closerId = closer.id;
       } else {
-        // Create new Closer
+        // Create new Closer with firstName only
         closer = await prisma.closer.create({
           data: {
-            name: closerName,
+            firstName: closerFirstName,
             email: body.closerEmail?.trim().toLowerCase() || null,
           },
         });
@@ -190,22 +190,21 @@ export async function POST(request: NextRequest) {
 
     // ─── 3. FIND OR CREATE PROGRAMME ────────────────────────────────
 
-    let programmeId: string | null = null;
+    let programmeName: string | null = null;
 
     if (body.programme?.trim()) {
-      const programmeName = body.programme.trim();
+      programmeName = body.programme.trim();
 
-      let programme = await prisma.programme.findFirst({
+      // Ensure programme exists in Programme table
+      const existingProgramme = await prisma.programme.findFirst({
         where: { name: { equals: programmeName, mode: "insensitive" } },
       });
 
-      if (!programme) {
-        programme = await prisma.programme.create({
+      if (!existingProgramme) {
+        await prisma.programme.create({
           data: { name: programmeName },
         });
       }
-
-      programmeId = programme.id;
     }
 
     // ─── 4. CREATE OR ENRICH STUDENT ────────────────────────────────
@@ -230,7 +229,7 @@ export async function POST(request: NextRequest) {
           firstName: body.firstName?.trim() || "Unknown",
           lastName: body.lastName?.trim() || "Unknown",
           email,
-          phone: body.phone?.trim() || null,
+          phone: body.phone?.trim() || "TBC",
           studentNumber: body.studentNumber?.trim() || null,
           status: StudentStatus.PROSPECT,
           totalAmount: body.totalSalesPrice ?? null,
@@ -238,7 +237,7 @@ export async function POST(request: NextRequest) {
           paymentPlanType: paymentPlan,
           closerId,
           saleDate,
-          programmeId,
+          programmeName,
           notes: notesAppend || null,
         },
       });
@@ -259,10 +258,10 @@ export async function POST(request: NextRequest) {
           paymentPlanType: paymentPlan,
           closerId: closerId || student.closerId,
           saleDate: saleDate || student.saleDate,
-          programmeId: programmeId || student.programmeId,
+          programmeName: programmeName || student.programmeName,
           notes: updatedNotes,
-          // Update phone if provided and student doesn't have one
-          phone: student.phone || body.phone?.trim() || null,
+          // Update phone if provided and student has placeholder
+          phone: (student.phone === "TBC" && body.phone?.trim()) ? body.phone.trim() : student.phone,
         },
       });
     }
@@ -274,12 +273,10 @@ export async function POST(request: NextRequest) {
     // Front-end payment (instalment 1)
     const frontEndAmount = body.amountReceived ?? body.frontEndPrice;
     if (frontEndAmount && frontEndAmount > 0) {
-      const existingPayment1 = await prisma.payment.findUnique({
+      const existingPayment1 = await prisma.payment.findFirst({
         where: {
-          studentId_instalmentNumber: {
-            studentId: student.id,
-            instalmentNumber: 1,
-          },
+          studentId: student.id,
+          instalmentNumber: 1,
         },
       });
 
@@ -289,7 +286,7 @@ export async function POST(request: NextRequest) {
         status: body.paymentMade
           ? PaymentStatus.COMPLETED
           : PaymentStatus.PENDING,
-        paidAt: body.paymentMade ? parseDate(body.paidAt) : null,
+        paidDate: body.paymentMade ? parseDate(body.paidAt) : null,
         reference: body.paymentRef?.trim() || null,
         instalmentNumber: 1,
         totalInstalments,
@@ -312,12 +309,10 @@ export async function POST(request: NextRequest) {
 
     // 2nd payment
     if (body.secondPaymentAmount && body.secondPaymentAmount > 0) {
-      const existingPayment2 = await prisma.payment.findUnique({
+      const existingPayment2 = await prisma.payment.findFirst({
         where: {
-          studentId_instalmentNumber: {
-            studentId: student.id,
-            instalmentNumber: 2,
-          },
+          studentId: student.id,
+          instalmentNumber: 2,
         },
       });
 
@@ -347,12 +342,10 @@ export async function POST(request: NextRequest) {
 
     // 3rd payment
     if (body.thirdPaymentAmount && body.thirdPaymentAmount > 0) {
-      const existingPayment3 = await prisma.payment.findUnique({
+      const existingPayment3 = await prisma.payment.findFirst({
         where: {
-          studentId_instalmentNumber: {
-            studentId: student.id,
-            instalmentNumber: 3,
-          },
+          studentId: student.id,
+          instalmentNumber: 3,
         },
       });
 
@@ -396,11 +389,12 @@ export async function POST(request: NextRequest) {
           data: {
             studentId: student.id,
             description: body.specialAgreement.trim(),
+            agreedBy: body.closerName?.trim() || null,
             agreedDate: saleDate || new Date(),
             notes: body.closerName
               ? `Agreed by: ${body.closerName.trim()}`
               : null,
-            isResolved: false,
+            isActive: true,
           },
         });
       }
@@ -412,6 +406,7 @@ export async function POST(request: NextRequest) {
       data: {
         studentId: student.id,
         type: ActivityType.SALE_DATA_SYNCED,
+        title: "Sale data synced",
         description: `Sale data synced from Google Sheet${body.studentNumber ? ` — Student number: ${body.studentNumber.trim()}` : ""}`,
         metadata: {
           source: "google_sheet_sync",

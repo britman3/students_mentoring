@@ -16,8 +16,8 @@ interface ConfirmationData {
   student: { firstName: string; lastName: string; email: string };
   slot: { dayName: string; displayTime: string; zoomLink: string | null };
   firstCallDate: string;
-  groupLabel: string;
-  showGroupLabels: boolean;
+  groupCode: string;
+  showGroupCodes: boolean;
 }
 
 interface FormErrors {
@@ -31,19 +31,19 @@ interface FormErrors {
 }
 
 interface EnrolmentFormProps {
-  token: string;
   initialFirstName?: string | null;
   initialLastName?: string | null;
   initialEmail?: string | null;
   initialPhone?: string | null;
+  closer?: string | null;
 }
 
 export default function EnrolmentForm({
-  token,
   initialFirstName,
   initialLastName,
   initialEmail,
   initialPhone,
+  closer,
 }: EnrolmentFormProps) {
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
@@ -141,12 +141,12 @@ export default function EnrolmentForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
           slotId: selectedSlotId,
+          closer: closer || undefined,
           waitlistSlotId: wantWaitlist ? waitlistSlotId : undefined,
         }),
       });
@@ -175,8 +175,8 @@ export default function EnrolmentForm({
         firstName={confirmation.student.firstName}
         dayAndTime={`${confirmation.slot.dayName} ${confirmation.slot.displayTime}`}
         firstCallDate={confirmation.firstCallDate}
-        groupLabel={confirmation.groupLabel}
-        showGroupLabels={confirmation.showGroupLabels}
+        groupCode={confirmation.groupCode}
+        showGroupCodes={confirmation.showGroupCodes}
         zoomLink={confirmation.slot.zoomLink}
       />
     );

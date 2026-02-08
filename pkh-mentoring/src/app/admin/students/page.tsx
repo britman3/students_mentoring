@@ -25,12 +25,6 @@ interface Student {
   week: number | null;
   group: string | null;
   slotInstanceId: string | null;
-  magicLink: {
-    id: string;
-    token: string;
-    status: string;
-    createdAt: string;
-  } | null;
 }
 
 interface SlotOption {
@@ -39,7 +33,7 @@ interface SlotOption {
   instances: {
     id: string;
     weekNumber: number;
-    groupLabel: string;
+    groupCode: string;
     capacity: number;
     studentCount: number;
   }[];
@@ -201,7 +195,7 @@ function StudentRow({ student, index, expanded, onToggle, slots, statusBadge, on
                   {student.phone && <p><span className="text-warm-grey">Phone:</span> {student.phone}</p>}
                   <p><span className="text-warm-grey">Status:</span> {student.status.replace("_", " ")}</p>
                   <p><span className="text-warm-grey">Created:</span> {new Date(student.createdAt).toLocaleDateString()}</p>
-                  {student.magicLink && <p><span className="text-warm-grey">Magic Link:</span> {student.magicLink.token.slice(0, 8)}... ({student.magicLink.status})</p>}
+
                 </div>
               </div>
               <div className="space-y-4">
@@ -222,7 +216,7 @@ function StudentRow({ student, index, expanded, onToggle, slots, statusBadge, on
                       <option value="">Select slot...</option>
                       {slots.flatMap((s) => s.instances.map((inst) => (
                         <option key={inst.id} value={inst.id}>
-                          {s.displayName} - Week {inst.weekNumber} (Group {inst.groupLabel}) [{inst.studentCount}/{inst.capacity}]
+                          {s.displayName} - Week {inst.weekNumber} (Group {inst.groupCode}) [{inst.studentCount}/{inst.capacity}]
                         </option>
                       )))}
                     </select>

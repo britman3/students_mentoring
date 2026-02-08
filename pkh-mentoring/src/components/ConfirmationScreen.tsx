@@ -4,8 +4,8 @@ interface ConfirmationScreenProps {
   firstName: string;
   dayAndTime: string;
   firstCallDate: string;
-  groupLabel?: string | null;
-  showGroupLabels: boolean;
+  groupCode?: string | null;
+  showGroupCodes: boolean;
   zoomLink?: string | null;
 }
 
@@ -13,8 +13,8 @@ export default function ConfirmationScreen({
   firstName,
   dayAndTime,
   firstCallDate,
-  groupLabel,
-  showGroupLabels,
+  groupCode,
+  showGroupCodes,
   zoomLink,
 }: ConfirmationScreenProps) {
   return (
@@ -50,13 +50,13 @@ export default function ConfirmationScreen({
           </p>
         </div>
 
-        {showGroupLabels && groupLabel && (
+        {showGroupCodes && groupCode && (
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-warm-grey">
               Group
             </p>
             <p className="mt-1 text-lg font-semibold text-navy">
-              {groupLabel}
+              {groupCode}
             </p>
           </div>
         )}

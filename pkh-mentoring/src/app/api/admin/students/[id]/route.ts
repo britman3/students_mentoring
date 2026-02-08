@@ -28,6 +28,7 @@ export async function PUT(
         data: {
           studentId: id,
           type: ActivityType.NOTE_ADDED,
+          title: "Notes updated",
           description: "Notes updated via admin dashboard",
         },
       });
@@ -45,7 +46,8 @@ export async function PUT(
       await prisma.activityLog.create({
         data: {
           studentId: id,
-          type: ActivityType.SLOT_ASSIGNED,
+          type: ActivityType.SLOT_REASSIGNED,
+          title: "Slot reassigned",
           description: `Reassigned from instance ${oldInstanceId || "none"} to ${newInstance?.slot.id || slotInstanceId} Week ${newInstance?.weekNumber}`,
           metadata: {
             oldSlotInstanceId: oldInstanceId,
@@ -61,6 +63,7 @@ export async function PUT(
         data: {
           studentId: id,
           type: ActivityType.STATUS_CHANGED,
+          title: "Status changed",
           description: "Promoted from waitlist via admin dashboard",
           metadata: {
             oldStatus: student.status,

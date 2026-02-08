@@ -4,7 +4,7 @@ interface SlackNotificationData {
   dayName: string;
   time: string;
   weekNumber: number;
-  groupLabel: string;
+  groupCode: string;
   firstCallDate: string;
 }
 
@@ -42,7 +42,7 @@ export async function sendSlackNotification(
               },
               {
                 type: "mrkdwn",
-                text: `*Assigned:*\nWeek ${data.weekNumber}, Group ${data.groupLabel}`,
+                text: `*Assigned:*\nWeek ${data.weekNumber}, Group ${data.groupCode}`,
               },
               {
                 type: "mrkdwn",
