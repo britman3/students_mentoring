@@ -3,43 +3,29 @@ import { prisma } from "@/lib/db";
 import { StudentStatus } from "@prisma/client";
 import { getDayName, formatDisplayTime } from "@/lib/display";
 
-const GROUP_LABELS_WEEK1 = ["A", "B", "C", "D", "E", "F", "G", "H"];
-const GROUP_LABELS_WEEK2 = ["M", "N", "O", "P", "Q", "R", "S", "T"];
+// Fixed group labels: day+time → { week1 label, week2 label, sortOrder }
+// Tuesday 12/2/4/6 → A-D, Wednesday 12/2/4/6 → E-H, Thursday 12/2/4/6 → I-L
+const FIXED_SLOT_CONFIG: Record<
+  string,
+  { week1: string; week2: string; sortOrder: number }
+> = {
+  "2-12:00": { week1: "A", week2: "M", sortOrder: 0 },
+  "2-14:00": { week1: "B", week2: "N", sortOrder: 1 },
+  "2-16:00": { week1: "C", week2: "O", sortOrder: 2 },
+  "2-18:00": { week1: "D", week2: "P", sortOrder: 3 },
+  "3-12:00": { week1: "E", week2: "Q", sortOrder: 4 },
+  "3-14:00": { week1: "F", week2: "R", sortOrder: 5 },
+  "3-16:00": { week1: "G", week2: "S", sortOrder: 6 },
+  "3-18:00": { week1: "H", week2: "T", sortOrder: 7 },
+  "4-12:00": { week1: "I", week2: "U", sortOrder: 8 },
+  "4-14:00": { week1: "J", week2: "V", sortOrder: 9 },
+  "4-16:00": { week1: "K", week2: "W", sortOrder: 10 },
+  "4-18:00": { week1: "L", week2: "X", sortOrder: 11 },
+};
 
-async function recalculateSortOrderAndGroups(): Promise<void> {
-  const slots = await prisma.slot.findMany({
-    include: { instances: { orderBy: { weekNumber: "asc" } } },
-    orderBy: [{ dayOfWeek: "asc" }, { time: "asc" }],
-  });
-
-  const updates = [];
-
-  for (let i = 0; i < slots.length; i++) {
-    const slot = slots[i];
-
-    updates.push(
-      prisma.slot.update({
-        where: { id: slot.id },
-        data: { sortOrder: i },
-      })
-    );
-
-    for (const instance of slot.instances) {
-      const label =
-        instance.weekNumber === 1
-          ? GROUP_LABELS_WEEK1[i] || "X"
-          : GROUP_LABELS_WEEK2[i] || "Y";
-
-      updates.push(
-        prisma.slotInstance.update({
-          where: { id: instance.id },
-          data: { groupLabel: label },
-        })
-      );
-    }
-  }
-
-  await prisma.$transaction(updates);
+function getFixedConfig(dayOfWeek: number, time: string) {
+  const key = `${dayOfWeek}-${time}`;
+  return FIXED_SLOT_CONFIG[key] || null;
 }
 
 export async function GET() {
@@ -117,17 +103,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid day" }, { status: 400 });
     }
 
-    // Create with temporary sortOrder; will be recalculated below
+    const config = getFixedConfig(day, time);
+    if (!config) {
+      return NextResponse.json(
+        { error: "Slots can only be created for Tuesday, Wednesday, or Thursday at 12pm, 2pm, 4pm, or 6pm" },
+        { status: 400 }
+      );
+    }
+
     const slot = await prisma.slot.create({
       data: {
         dayOfWeek: day,
         time,
         zoomLink: zoomLink || null,
-        sortOrder: 0,
+        sortOrder: config.sortOrder,
         instances: {
           create: [
-            { weekNumber: 1, groupLabel: "X" },
-            { weekNumber: 2, groupLabel: "Y" },
+            { weekNumber: 1, groupLabel: config.week1 },
+            { weekNumber: 2, groupLabel: config.week2 },
           ],
         },
       },
@@ -136,16 +129,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Recalculate sortOrder and group labels for all slots
-    await recalculateSortOrderAndGroups();
-
-    // Re-fetch to return updated data
-    const updated = await prisma.slot.findUnique({
-      where: { id: slot.id },
-      include: { instances: true },
-    });
-
-    return NextResponse.json(updated, { status: 201 });
+    return NextResponse.json(slot, { status: 201 });
   } catch (error) {
     console.error("Slots POST error:", error);
     return NextResponse.json(

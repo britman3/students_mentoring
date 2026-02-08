@@ -26,13 +26,16 @@ interface Slot {
 }
 
 const DAYS = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
   { value: 2, label: "Tuesday" },
   { value: 3, label: "Wednesday" },
   { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
+];
+
+const TIMES = [
+  { value: "12:00", label: "12pm" },
+  { value: "14:00", label: "2pm" },
+  { value: "16:00", label: "4pm" },
+  { value: "18:00", label: "6pm" },
 ];
 
 export default function SlotsPage() {
@@ -155,7 +158,7 @@ export default function SlotsPage() {
 }
 
 function AddSlotModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [dayOfWeek, setDayOfWeek] = useState("1");
+  const [dayOfWeek, setDayOfWeek] = useState("2");
   const [time, setTime] = useState("12:00");
   const [zoomLink, setZoomLink] = useState("");
   const [saving, setSaving] = useState(false);
