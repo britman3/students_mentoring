@@ -341,11 +341,11 @@ export default function StudentsPage() {
 
       {/* Table */}
       <div className="bg-white rounded-lg border border-sand-dark shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto lg:overflow-x-visible">
+          <table className="w-full table-fixed lg:table-auto">
             <thead>
               <tr className="border-b border-sand-dark bg-sand">
-                <th className="w-10 px-3 py-3">
+                <th className="w-8 px-2 py-2">
                   <input
                     type="checkbox"
                     checked={
@@ -356,41 +356,41 @@ export default function StudentsPage() {
                     className="rounded border-sand-dark"
                   />
                 </th>
-                <th className="w-8 px-2 py-3" />
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                <th className="w-6 px-1 py-2" />
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
                   Name
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider hidden xl:table-cell">
                   Email
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider hidden xl:table-cell">
                   Phone
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
                   Slot
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
-                  Week
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                  Wk
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
-                  Group
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                  Grp
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
-                  First Call
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                  First
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
-                  Last Call
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                  Last
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
-                  Days Left
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                  Days
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
-                  Attended
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                  Att.
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
                   Closer
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-warm-grey uppercase tracking-wider">
+                <th className="text-left px-2 py-2 text-xs font-medium text-warm-grey uppercase tracking-wider">
                   Status
                 </th>
               </tr>
@@ -486,6 +486,8 @@ function StudentRow({
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [hasWaitlist, setHasWaitlist] = useState(false);
   const [copiedJoin, setCopiedJoin] = useState(false);
+  const [statusValue, setStatusValue] = useState(student.status);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   useEffect(() => {
     if (expanded) {
@@ -574,13 +576,37 @@ function StudentRow({
     }
   }
 
+  async function changeStatus(newStatus: string) {
+    if (newStatus === student.status) return;
+    setSavingStatus(true);
+    try {
+      const res = await fetch(`/api/admin/students/${student.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        showToast(`Status changed to ${newStatus.replace("_", " ")}`);
+        onUpdated();
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Failed to change status");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingStatus(false);
+    }
+  }
+
+  function getFullJoinUrl() {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3099");
+    return `${appUrl}/join/${student.joinCode}`;
+  }
+
   function copyJoinLink() {
     if (!student.joinCode) return;
-    const appUrl =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "http://localhost:3099";
-    navigator.clipboard.writeText(`${appUrl}/join/${student.joinCode}`);
+    navigator.clipboard.writeText(getFullJoinUrl());
     setCopiedJoin(true);
     setTimeout(() => setCopiedJoin(false), 2000);
   }
@@ -597,7 +623,7 @@ function StudentRow({
         className={`cursor-pointer ${index % 2 === 1 ? "bg-sand" : "bg-white"} hover:bg-sand/70`}
         onClick={onToggle}
       >
-        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+        <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
             checked={selected}
@@ -605,32 +631,32 @@ function StudentRow({
             className="rounded border-sand-dark"
           />
         </td>
-        <td className="px-2 py-3 text-warm-grey">
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <td className="px-1 py-2 text-warm-grey">
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </td>
-        <td className="px-4 py-3 text-sm font-medium text-charcoal whitespace-nowrap">
+        <td className="px-2 py-2 text-sm font-medium text-charcoal whitespace-nowrap">
           {student.name}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal">{student.email}</td>
-        <td className="px-4 py-3 text-sm text-charcoal whitespace-nowrap">
+        <td className="px-2 py-2 text-sm text-charcoal truncate max-w-[180px] hidden xl:table-cell">{student.email}</td>
+        <td className="px-2 py-2 text-sm text-charcoal whitespace-nowrap hidden xl:table-cell">
           {student.phone || "\u2014"}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal whitespace-nowrap">
+        <td className="px-2 py-2 text-sm text-charcoal whitespace-nowrap">
           {student.slot ? student.slot.displayName : "\u2014"}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal">
-          {student.week ? `Week ${student.week}` : "\u2014"}
+        <td className="px-2 py-2 text-sm text-charcoal">
+          {student.week ? `W${student.week}` : "\u2014"}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal">
+        <td className="px-2 py-2 text-sm text-charcoal">
           {student.group || "\u2014"}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal whitespace-nowrap">
+        <td className="px-2 py-2 text-sm text-charcoal whitespace-nowrap">
           {formatDateUK(student.firstCallDate)}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal whitespace-nowrap">
+        <td className="px-2 py-2 text-sm text-charcoal whitespace-nowrap">
           {lastCallStr}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal">
+        <td className="px-2 py-2 text-sm text-charcoal">
           <span
             className={
               daysLeft === "Completed" ? "text-success font-medium" : ""
@@ -639,13 +665,13 @@ function StudentRow({
             {daysLeft}
           </span>
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal">
+        <td className="px-2 py-2 text-sm text-charcoal">
           {student.attendedCount}
         </td>
-        <td className="px-4 py-3 text-sm text-charcoal whitespace-nowrap">
+        <td className="px-2 py-2 text-sm text-charcoal whitespace-nowrap">
           {student.closerName || "\u2014"}
         </td>
-        <td className="px-4 py-3">{statusBadge}</td>
+        <td className="px-2 py-2">{statusBadge}</td>
       </tr>
       {expanded && (
         <tr className="bg-sand/50">
@@ -669,10 +695,26 @@ function StudentRow({
                         </span>{" "}
                         {student.studentNumber || "Pending"}
                       </p>
-                      <p>
-                        <span className="text-warm-grey">Status:</span>{" "}
-                        {student.status.replace("_", " ")}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-warm-grey">Status:</span>
+                        <select
+                          value={statusValue}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setStatusValue(e.target.value);
+                            changeStatus(e.target.value);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={savingStatus}
+                          className="px-2 py-1 text-sm border border-sand-dark rounded-md focus:outline-none focus:ring-2 focus:ring-gold bg-white disabled:opacity-50"
+                        >
+                          <option value="SLOT_SELECTED">SLOT SELECTED</option>
+                          <option value="ACTIVE">ACTIVE</option>
+                          <option value="PAUSED">PAUSED</option>
+                          <option value="COMPLETED">COMPLETED</option>
+                          <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                      </div>
                       <p>
                         <span className="text-warm-grey">Created:</span>{" "}
                         {formatDateUK(student.createdAt)}
@@ -706,7 +748,7 @@ function StudentRow({
                       </h3>
                       <div className="flex items-center gap-2">
                         <code className="text-xs bg-sand px-2 py-1 rounded break-all">
-                          /join/{student.joinCode}
+                          {getFullJoinUrl()}
                         </code>
                         <button
                           onClick={(e) => {
@@ -725,6 +767,9 @@ function StudentRow({
                             <Copy size={14} />
                           )}
                         </button>
+                        {copiedJoin && (
+                          <span className="text-xs text-success font-medium">Copied!</span>
+                        )}
                       </div>
                     </div>
                   )}

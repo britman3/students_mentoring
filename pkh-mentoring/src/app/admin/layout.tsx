@@ -7,7 +7,9 @@ import {
   LayoutDashboard,
   Clock,
   Users,
+  Video,
   BarChart3,
+  Wrench,
   Settings,
   LogOut,
   Menu,
@@ -23,7 +25,9 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, badgeKey: null },
   { href: "/admin/slots", label: "Slots", icon: Clock, badgeKey: "slots" as const },
   { href: "/admin/students", label: "Students", icon: Users, badgeKey: "students" as const },
+  { href: "/admin/zoom", label: "Zoom", icon: Video, badgeKey: null },
   { href: "/admin/stats", label: "Stats", icon: BarChart3, badgeKey: null },
+  { href: "/admin/system", label: "System", icon: Wrench, badgeKey: null },
   { href: "/admin/settings", label: "Settings", icon: Settings, badgeKey: null },
 ];
 
@@ -187,7 +191,7 @@ export default function AdminLayout({
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-[1280px] mx-auto">{children}</div>
+          <div className="max-w-[1600px] mx-auto">{children}</div>
         </main>
       </div>
     </div>
