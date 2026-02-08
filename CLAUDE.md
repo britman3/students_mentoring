@@ -194,10 +194,10 @@ tar czf ~/backups/mentoring_code_$(date +%Y%m%d_%H%M%S).tar.gz .
 git pull origin main
 
 # 4. Install deps + migrate + build + restart
-pnpm install
-pnpm prisma migrate deploy
-pnpm prisma generate
-pnpm build
+npm install
+npx prisma migrate deploy
+npx prisma generate
+npm run build
 pm2 restart pkh-mentoring
 ```
 
