@@ -44,3 +44,19 @@ export function getDaysUntilLastCall(firstCallDate: Date): number {
   const now = toZonedTime(new Date(), TIMEZONE);
   return differenceInDays(lastCallDate, now);
 }
+
+/**
+ * Short format: "21 Jan 2026"
+ */
+export function formatShortDate(date: Date): string {
+  const zoned = toZonedTime(date, TIMEZONE);
+  return format(zoned, "d MMM yyyy");
+}
+
+/**
+ * Table format: "21/01/2026"
+ */
+export function formatTableDate(date: Date): string {
+  const zoned = toZonedTime(date, TIMEZONE);
+  return format(zoned, "dd/MM/yyyy");
+}
