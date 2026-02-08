@@ -25,12 +25,14 @@ enum PaymentPlan {
   SPLIT_3
   SPLIT_4
   MONTHLY
+  CUSTOM
 }
 
 enum PaymentMethod {
   STRIPE
   BANK_TRANSFER
   CASH
+  PAYPAL
   OTHER
 }
 
@@ -72,6 +74,7 @@ enum ActivityType {
   WAITLIST_JOINED
   WAITLIST_OFFERED
   ARRANGEMENT_CREATED
+  SALE_DATA_SYNCED
 }
 
 // ─── CORE TABLES ────────────────────────────────────────────────────
@@ -121,6 +124,7 @@ model Student {
   lastName        String
   email           String        @unique
   phone           String?
+  studentNumber   String?       @unique
   status          StudentStatus @default(PROSPECT)
   slotInstanceId  String?
   firstCallDate   DateTime?
@@ -182,7 +186,7 @@ model MagicLink {
 model Closer {
   id        String    @id @default(cuid())
   name      String
-  email     String    @unique
+  email     String?   @unique
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -191,18 +195,23 @@ model Closer {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  studentId     String
-  amount        Float
-  method        PaymentMethod
-  status        PaymentStatus @default(PENDING)
-  reference     String?
-  dueDate       DateTime?
-  paidAt        DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String         @id @default(cuid())
+  studentId        String
+  amount           Float
+  method           PaymentMethod?
+  status           PaymentStatus  @default(PENDING)
+  reference        String?
+  dueDate          DateTime?
+  paidAt           DateTime?
+  instalmentNumber Int?
+  totalInstalments Int?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  student       Student       @relation(fields: [studentId], references: [id])
+  student          Student        @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, instalmentNumber])
 }
 
 model Arrangement {

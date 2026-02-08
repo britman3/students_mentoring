@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { MagicLinkStatus } from "@prisma/client";
+import { MagicLinkStatus, StudentStatus } from "@prisma/client";
 import { getDayName, formatDisplayTime } from "@/lib/display";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
@@ -10,10 +10,23 @@ export const dynamic = "force-dynamic";
 
 export default async function EnrolPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { token } = await params;
+  const query = await searchParams;
+
+  // Extract pre-fill params from URL (from GHL redirect)
+  const prefillEmail =
+    typeof query.email === "string" ? query.email.trim().toLowerCase() : null;
+  const prefillFirstName =
+    typeof query.firstName === "string" ? query.firstName.trim() : null;
+  const prefillLastName =
+    typeof query.lastName === "string" ? query.lastName.trim() : null;
+  const prefillPhone =
+    typeof query.phone === "string" ? query.phone.trim() : null;
 
   const magicLink = await prisma.magicLink.findUnique({
     where: { token },
@@ -119,6 +132,56 @@ export default async function EnrolPage({
     );
   }
 
+  // ─── Check if email already has an enrolled student ───────────────
+  if (prefillEmail) {
+    const existingStudent = await prisma.student.findUnique({
+      where: { email: prefillEmail },
+      include: {
+        slotInstance: {
+          include: { slot: true },
+        },
+      },
+    });
+
+    if (
+      existingStudent &&
+      (existingStudent.status === StudentStatus.SLOT_SELECTED ||
+        existingStudent.status === StudentStatus.ACTIVE) &&
+      existingStudent.slotInstance
+    ) {
+      // Student already enrolled — show read-only confirmation
+      const settings = await prisma.settings.findFirst();
+      const slot = existingStudent.slotInstance.slot;
+      const dayName = getDayName(slot.dayOfWeek);
+      const displayTime = formatDisplayTime(slot.time);
+
+      let formattedFirstCallDate = "";
+      if (existingStudent.firstCallDate) {
+        const londonDate = toZonedTime(
+          existingStudent.firstCallDate,
+          "Europe/London"
+        );
+        formattedFirstCallDate = format(
+          londonDate,
+          "EEEE do MMMM yyyy 'at' h:mm a"
+        );
+      }
+
+      return (
+        <PageShell>
+          <ConfirmationScreen
+            firstName={existingStudent.firstName}
+            dayAndTime={`${dayName} ${displayTime}`}
+            firstCallDate={formattedFirstCallDate}
+            groupLabel={existingStudent.slotInstance.groupLabel}
+            showGroupLabels={settings?.showGroupLabels ?? false}
+            zoomLink={slot.zoomLink}
+          />
+        </PageShell>
+      );
+    }
+  }
+
   // Valid token (UNUSED, OPENED, SENT) — update to OPENED on first visit
   if (magicLink.status === MagicLinkStatus.UNUSED) {
     await prisma.magicLink.update({
@@ -138,7 +201,13 @@ export default async function EnrolPage({
             Complete the form below to secure your mentoring slot.
           </p>
         </div>
-        <EnrolmentForm token={token} />
+        <EnrolmentForm
+          token={token}
+          initialFirstName={prefillFirstName}
+          initialLastName={prefillLastName}
+          initialEmail={prefillEmail}
+          initialPhone={prefillPhone}
+        />
       </div>
     </PageShell>
   );

@@ -30,16 +30,30 @@ interface FormErrors {
   general?: string;
 }
 
-export default function EnrolmentForm({ token }: { token: string }) {
+interface EnrolmentFormProps {
+  token: string;
+  initialFirstName?: string | null;
+  initialLastName?: string | null;
+  initialEmail?: string | null;
+  initialPhone?: string | null;
+}
+
+export default function EnrolmentForm({
+  token,
+  initialFirstName,
+  initialLastName,
+  initialEmail,
+  initialPhone,
+}: EnrolmentFormProps) {
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [slotsError, setSlotsError] = useState("");
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [confirmEmail, setConfirmEmail] = useState("");
+  const [firstName, setFirstName] = useState(initialFirstName || "");
+  const [lastName, setLastName] = useState(initialLastName || "");
+  const [phone, setPhone] = useState(initialPhone || "");
+  const [email, setEmail] = useState(initialEmail || "");
+  const [confirmEmail, setConfirmEmail] = useState(initialEmail || "");
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [wantWaitlist, setWantWaitlist] = useState(false);
   const [waitlistSlotId, setWaitlistSlotId] = useState("");
