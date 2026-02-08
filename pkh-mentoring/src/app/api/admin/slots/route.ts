@@ -6,15 +6,40 @@ import { getDayName, formatDisplayTime } from "@/lib/display";
 const GROUP_LABELS_WEEK1 = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const GROUP_LABELS_WEEK2 = ["M", "N", "O", "P", "Q", "R", "S", "T"];
 
-async function getNextGroupLabels(): Promise<[string, string]> {
-  const instances = await prisma.slotInstance.findMany({
-    select: { groupLabel: true },
+async function recalculateSortOrderAndGroups(): Promise<void> {
+  const slots = await prisma.slot.findMany({
+    include: { instances: { orderBy: { weekNumber: "asc" } } },
+    orderBy: [{ dayOfWeek: "asc" }, { time: "asc" }],
   });
-  const existing = new Set(instances.map((i) => i.groupLabel));
 
-  const label1 = GROUP_LABELS_WEEK1.find((l) => !existing.has(l)) || "X";
-  const label2 = GROUP_LABELS_WEEK2.find((l) => !existing.has(l)) || "Y";
-  return [label1, label2];
+  const updates = [];
+
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+
+    updates.push(
+      prisma.slot.update({
+        where: { id: slot.id },
+        data: { sortOrder: i },
+      })
+    );
+
+    for (const instance of slot.instances) {
+      const label =
+        instance.weekNumber === 1
+          ? GROUP_LABELS_WEEK1[i] || "X"
+          : GROUP_LABELS_WEEK2[i] || "Y";
+
+      updates.push(
+        prisma.slotInstance.update({
+          where: { id: instance.id },
+          data: { groupLabel: label },
+        })
+      );
+    }
+  }
+
+  await prisma.$transaction(updates);
 }
 
 export async function GET() {
@@ -92,22 +117,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid day" }, { status: 400 });
     }
 
-    // Get next sort order
-    const maxSort = await prisma.slot.aggregate({ _max: { sortOrder: true } });
-    const nextSort = (maxSort._max.sortOrder ?? 0) + 1;
-
-    const [group1, group2] = await getNextGroupLabels();
-
+    // Create with temporary sortOrder; will be recalculated below
     const slot = await prisma.slot.create({
       data: {
         dayOfWeek: day,
         time,
         zoomLink: zoomLink || null,
-        sortOrder: nextSort,
+        sortOrder: 0,
         instances: {
           create: [
-            { weekNumber: 1, groupLabel: group1 },
-            { weekNumber: 2, groupLabel: group2 },
+            { weekNumber: 1, groupLabel: "X" },
+            { weekNumber: 2, groupLabel: "Y" },
           ],
         },
       },
@@ -116,7 +136,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(slot, { status: 201 });
+    // Recalculate sortOrder and group labels for all slots
+    await recalculateSortOrderAndGroups();
+
+    // Re-fetch to return updated data
+    const updated = await prisma.slot.findUnique({
+      where: { id: slot.id },
+      include: { instances: true },
+    });
+
+    return NextResponse.json(updated, { status: 201 });
   } catch (error) {
     console.error("Slots POST error:", error);
     return NextResponse.json(
