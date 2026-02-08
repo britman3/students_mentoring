@@ -157,6 +157,71 @@ Optional: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `R2_ACCESS_KEY_ID`, `R2_SE
 
 ---
 
+## Production Server (Hetzner)
+
+| Detail | Value |
+|--------|-------|
+| Host | `ubuntu-2gb-hel1-1` (Hetzner Cloud, Helsinki) |
+| OS | Ubuntu |
+| App path | `/opt/students_mentoring/pkh-mentoring` |
+| Process manager | **PM2** (cluster mode) |
+| PM2 app name | `pkh-mentoring` (id: 8) |
+| Domain | `mentoring.propertyknowhow.com` |
+| Database | PostgreSQL (local on same server) |
+| DB connection | `postgresql://pkh_user:pkh_dev_password@localhost:5433/mentoring_db?schema=public` |
+| Git user | `britman3` / `nickellsmore61@gmail.com` |
+
+### First-Time Server Setup (if git identity not configured)
+
+```bash
+git config --global user.email "nickellsmore61@gmail.com"
+git config --global user.name "britman3"
+```
+
+### Deployment Commands (run on Hetzner via SSH)
+
+```bash
+# 1. Back up the database FIRST
+mkdir -p ~/backups
+cd /opt/students_mentoring/pkh-mentoring
+source .env
+pg_dump "$DATABASE_URL" > ~/backups/mentoring_backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 2. Back up app code
+tar czf ~/backups/mentoring_code_$(date +%Y%m%d_%H%M%S).tar.gz .
+
+# 3. Pull latest code
+git pull origin main
+
+# 4. Install deps + migrate + build + restart
+pnpm install
+pnpm prisma migrate deploy
+pnpm prisma generate
+pnpm build
+pm2 restart pkh-mentoring
+```
+
+### Other PM2 Commands
+
+```bash
+pm2 logs pkh-mentoring          # View live logs
+pm2 show pkh-mentoring          # Full process info
+pm2 restart pkh-mentoring       # Restart app
+pm2 stop pkh-mentoring          # Stop app
+pm2 list                        # All running apps
+```
+
+### Other Apps on Same Server
+
+| PM2 Name | Notes |
+|----------|-------|
+| `flipfinder-api` | Flip Finder API |
+| `deal-checker` | Deal Checker |
+| `legal-pack-analyz…` | Legal Pack Analyser (currently errored) |
+| `trugovai-*` | TruGov AI suite (incident, inventory, risk, survey, vendor) |
+
+---
+
 ## Project Structure
 ```
 app/                → Next.js App Router

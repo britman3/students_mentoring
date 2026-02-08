@@ -77,12 +77,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check email uniqueness
+    // Check if student already exists
     const existingStudent = await prisma.student.findUnique({
       where: { email: email.toLowerCase().trim() },
     });
 
-    if (existingStudent) {
+    if (existingStudent && existingStudent.status !== StudentStatus.PROSPECT) {
       return NextResponse.json(
         { error: "A student with this email address is already registered." },
         { status: 409 }
@@ -92,19 +92,37 @@ export async function POST(request: NextRequest) {
     // Run auto-assignment logic
     const assignment = await assignStudentToSlot(slotId);
 
-    // Create student record
-    const student = await prisma.student.create({
-      data: {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.toLowerCase().trim(),
-        phone: phone.trim(),
-        status: StudentStatus.SLOT_SELECTED,
-        slotInstanceId: assignment.slotInstanceId,
-        firstCallDate: assignment.firstCallDate,
-        magicLinkId: magicLink.id,
-      },
-    });
+    let student;
+
+    if (existingStudent && existingStudent.status === StudentStatus.PROSPECT) {
+      // PROSPECT exists from sheet sync — upgrade to SLOT_SELECTED
+      student = await prisma.student.update({
+        where: { id: existingStudent.id },
+        data: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: phone.trim(),
+          status: StudentStatus.SLOT_SELECTED,
+          slotInstanceId: assignment.slotInstanceId,
+          firstCallDate: assignment.firstCallDate,
+          magicLinkId: magicLink.id,
+        },
+      });
+    } else {
+      // No existing student — create new
+      student = await prisma.student.create({
+        data: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.toLowerCase().trim(),
+          phone: phone.trim(),
+          status: StudentStatus.SLOT_SELECTED,
+          slotInstanceId: assignment.slotInstanceId,
+          firstCallDate: assignment.firstCallDate,
+          magicLinkId: magicLink.id,
+        },
+      });
+    }
 
     // Update magic link to COMPLETED
     await prisma.magicLink.update({
