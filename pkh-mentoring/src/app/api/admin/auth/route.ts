@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { setSessionCookie, clearSessionCookie, verifyPassword } from "@/lib/auth";
+import { setSessionCookie, clearSessionCookie, verifyPassword, isAuthenticated } from "@/lib/auth";
+
+export async function GET() {
+  const authed = await isAuthenticated();
+  if (!authed) {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
+  }
+  return NextResponse.json({ authenticated: true });
+}
 
 export async function POST(request: NextRequest) {
   let body;

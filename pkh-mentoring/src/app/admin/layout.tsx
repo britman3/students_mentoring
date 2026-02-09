@@ -50,8 +50,30 @@ export default function AdminLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [badges, setBadges] = useState<NavBadges>({ students: 0, slots: 0 });
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Auth check — redirects to login if session is invalid
+  useEffect(() => {
+    if (pathname === "/admin/login") {
+      setAuthChecked(true);
+      return;
+    }
+
+    fetch("/api/admin/auth")
+      .then((res) => {
+        if (!res.ok) {
+          router.replace("/admin/login");
+        } else {
+          setAuthChecked(true);
+        }
+      })
+      .catch(() => {
+        router.replace("/admin/login");
+      });
+  }, [pathname, router]);
 
   useEffect(() => {
+    if (pathname === "/admin/login") return;
     fetch("/api/admin/stats/summary")
       .then((res) => res.json())
       .then((data) => {
@@ -65,6 +87,14 @@ export default function AdminLayout({
 
   if (pathname === "/admin/login") {
     return <>{children}</>;
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-warm-white">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+      </div>
+    );
   }
 
   const breadcrumbs = getBreadcrumbs(pathname);

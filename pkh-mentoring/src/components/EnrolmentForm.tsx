@@ -344,35 +344,24 @@ export default function EnrolmentForm({
         )}
 
         {!slotsLoading && !slotsError && slots.length > 0 && (
-          <div className="mt-4 space-y-3">
-            {slots.map((slot) => (
-              <label
-                key={slot.id}
-                className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition-all ${
-                  selectedSlotId === slot.id
-                    ? "border-gold bg-gold/5 shadow-sm"
-                    : "border-sand-dark bg-white hover:border-gold/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="slotId"
-                  value={slot.id}
-                  checked={selectedSlotId === slot.id}
-                  onChange={(e) => setSelectedSlotId(e.target.value)}
-                  className="h-5 w-5 accent-gold"
-                />
-                <div className="flex-1">
-                  <p className="font-semibold text-navy-dark">
-                    {slot.dayName} {slot.displayTime}
-                  </p>
-                  <p className="text-sm text-warm-grey">
-                    {slot.availableSpots} spot
-                    {slot.availableSpots !== 1 ? "s" : ""} remaining
-                  </p>
-                </div>
-              </label>
-            ))}
+          <div className="mt-4">
+            <select
+              value={selectedSlotId}
+              onChange={(e) => setSelectedSlotId(e.target.value)}
+              className="block w-full rounded-lg border border-sand-dark bg-white px-3.5 py-2.5 text-charcoal outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/30"
+            >
+              <option value="">Select your time slot...</option>
+              {slots.map((slot) => (
+                <option key={slot.id} value={slot.id}>
+                  {slot.dayName} {slot.displayTime}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-sm text-warm-grey">
+              {selectedSlotId
+                ? `${slots.find((s) => s.id === selectedSlotId)?.availableSpots ?? 0} spot${(slots.find((s) => s.id === selectedSlotId)?.availableSpots ?? 0) !== 1 ? "s" : ""} available`
+                : "Spots available across all time slots"}
+            </p>
           </div>
         )}
 
