@@ -1,7 +1,9 @@
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { ActivityType } from "@prisma/client";
+import { getLastCallDate } from "@/lib/dates";
+import { getDayName, formatDisplayTime } from "@/lib/display";
+import JoinClient from "./JoinClient";
 
 interface JoinPageProps {
   params: Promise<{ code: string }>;
@@ -42,6 +44,34 @@ export default async function JoinPage({ params }: JoinPageProps) {
     );
   }
 
+  // Check if support has ended (today > last call date)
+  if (student.firstCallDate) {
+    const lastCallDate = getLastCallDate(student.firstCallDate);
+    const now = new Date();
+    if (now > lastCallDate) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-warm-white px-4">
+          <div className="max-w-md text-center">
+            <div className="mb-4 text-5xl">{"\u23F0"}</div>
+            <h1 className="mb-3 text-2xl font-bold text-navy-dark">
+              Support Ended
+            </h1>
+            <p className="text-warm-grey">
+              Your mentoring support period has ended. If you believe this is an
+              error or would like to discuss your options, please contact{" "}
+              <a
+                href="mailto:support@propertyknowhow.com"
+                className="font-medium text-navy underline"
+              >
+                support@propertyknowhow.com
+              </a>
+            </p>
+          </div>
+        </div>
+      );
+    }
+  }
+
   const zoomLink = student.slotInstance.slot.zoomLink;
 
   if (!zoomLink) {
@@ -53,7 +83,8 @@ export default async function JoinPage({ params }: JoinPageProps) {
             Link not ready yet
           </h1>
           <p className="text-warm-grey">
-            Your mentoring link hasn&rsquo;t been set up yet. Please contact{" "}
+            Your link is valid but the Zoom meeting hasn&rsquo;t been configured
+            yet. Please contact{" "}
             <a
               href="mailto:support@propertyknowhow.com"
               className="font-medium text-navy underline"
@@ -66,7 +97,7 @@ export default async function JoinPage({ params }: JoinPageProps) {
     );
   }
 
-  // Check for recent attendance (30-minute deduplication)
+  // Log attendance (30-minute deduplication)
   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
   const recentAttendance = await prisma.attendance.findFirst({
@@ -77,7 +108,6 @@ export default async function JoinPage({ params }: JoinPageProps) {
   });
 
   if (!recentAttendance) {
-    // Get request metadata
     const headersList = await headers();
     const ipAddress =
       headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -85,7 +115,6 @@ export default async function JoinPage({ params }: JoinPageProps) {
       null;
     const userAgent = headersList.get("user-agent") || null;
 
-    // Create attendance record and activity log
     await prisma.attendance.create({
       data: {
         studentId: student.id,
@@ -105,6 +134,34 @@ export default async function JoinPage({ params }: JoinPageProps) {
     });
   }
 
-  // Redirect to Zoom
-  redirect(zoomLink);
+  // Build zoommtg:// protocol URL
+  let zoomAppUrl = "";
+  try {
+    const url = new URL(zoomLink);
+    const meetingId = url.pathname.split("/j/")[1]?.split("?")[0];
+    if (meetingId) {
+      const pwd = url.searchParams.get("pwd");
+      zoomAppUrl = `zoommtg://zoom.us/join?confno=${meetingId}`;
+      if (pwd) {
+        zoomAppUrl += `&pwd=${pwd}`;
+      }
+    }
+  } catch {
+    // If URL parsing fails, leave zoomAppUrl empty
+  }
+
+  const slotDay = getDayName(student.slotInstance.slot.dayOfWeek);
+  const slotTime = formatDisplayTime(student.slotInstance.slot.time);
+  const groupCode = student.slotInstance.groupCode;
+
+  return (
+    <JoinClient
+      studentName={`${student.firstName} ${student.lastName}`}
+      slotDay={slotDay}
+      slotTime={slotTime}
+      groupCode={groupCode}
+      zoomLink={zoomLink}
+      zoomAppUrl={zoomAppUrl}
+    />
+  );
 }
