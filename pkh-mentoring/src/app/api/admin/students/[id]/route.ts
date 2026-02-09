@@ -175,3 +175,31 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const student = await prisma.student.findUnique({ where: { id } });
+    if (!student) {
+      return NextResponse.json(
+        { error: "Student not found" },
+        { status: 404 }
+      );
+    }
+
+    // Cascade deletes handle related records (waitlist, attendance, activity logs, payments, arrangements)
+    await prisma.student.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Student DELETE error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete student" },
+      { status: 500 }
+    );
+  }
+}

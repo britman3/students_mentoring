@@ -7,6 +7,7 @@ interface SlackNotificationData {
   groupCode: string;
   firstCallDate: string;
   lastCallDate: string;
+  joinLink: string;
 }
 
 export async function sendSlackNotification(
@@ -56,6 +57,10 @@ export async function sendSlackNotification(
               {
                 type: "mrkdwn",
                 text: `*Last Call:*\n${data.lastCallDate}`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*Join Link:*\n${data.joinLink}`,
               },
             ],
           },

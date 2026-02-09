@@ -1,4 +1,4 @@
-import { addMonths, addWeeks, differenceInDays, format } from "date-fns";
+import { addDays, differenceInDays, format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Europe/London";
@@ -26,13 +26,13 @@ export function formatUKDate(date: Date): string {
 }
 
 /**
- * Calculate the last call date: firstCallDate + 6 months + 2 weeks
+ * Calculate the last call date: firstCallDate + 196 days
+ * 15 fortnightly sessions = 14 gaps x 14 days = 196 days
+ * Always falls on the same day of the week as the first call.
  */
 export function getLastCallDate(firstCallDate: Date): Date {
   const zonedDate = toZonedTime(firstCallDate, TIMEZONE);
-  const plusSixMonths = addMonths(zonedDate, 6);
-  const plusTwoWeeks = addWeeks(plusSixMonths, 2);
-  return plusTwoWeeks;
+  return addDays(zonedDate, 196);
 }
 
 /**

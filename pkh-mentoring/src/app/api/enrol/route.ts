@@ -219,6 +219,7 @@ export async function POST(request: NextRequest) {
         groupCode: assignment.groupCode,
         firstCallDate: firstCallDateFormatted,
         lastCallDate: lastCallDateFormatted,
+        joinLink: `${appUrl}/join/${joinCode}`,
       });
     } catch (error) {
       console.error("Failed to send Slack notification:", error);

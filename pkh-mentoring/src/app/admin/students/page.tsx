@@ -13,6 +13,7 @@ import {
   Check,
   Mail,
   X,
+  Trash2,
 } from "lucide-react";
 
 interface StudentSlot {
@@ -72,11 +73,10 @@ const BULK_STATUSES = ["ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"];
 function getLastCallDate(firstCallDate: string | null): Date | null {
   if (!firstCallDate) return null;
   const d = new Date(firstCallDate);
-  const plusSixMonths = new Date(d);
-  plusSixMonths.setMonth(plusSixMonths.getMonth() + 6);
-  const plusTwoWeeks = new Date(plusSixMonths);
-  plusTwoWeeks.setDate(plusTwoWeeks.getDate() + 14);
-  return plusTwoWeeks;
+  // 15 fortnightly sessions = 14 gaps x 14 days = 196 days
+  const lastCall = new Date(d);
+  lastCall.setDate(lastCall.getDate() + 196);
+  return lastCall;
 }
 
 function formatDateUK(dateStr: string | null): string {
@@ -111,6 +111,7 @@ export default function StudentsPage() {
   const [bulkStatus, setBulkStatus] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   const fetchStudents = useCallback(() => {
     const params = new URLSearchParams();
@@ -199,6 +200,24 @@ export default function StudentsPage() {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return;
+    try {
+      const res = await fetch("/api/admin/students", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (res.ok) {
+        showToastMsg(`Deleted ${selectedIds.size} student(s)`);
+        fetchStudents();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setShowBulkDeleteConfirm(false);
   }
 
   function getStatusBadge(status: string) {
@@ -336,7 +355,21 @@ export default function StudentsPage() {
           >
             Apply
           </button>
+          <button
+            onClick={() => setShowBulkDeleteConfirm(true)}
+            className="px-4 py-1 bg-error text-white font-medium rounded-md flex items-center gap-1"
+          >
+            <Trash2 size={14} /> Delete Selected
+          </button>
         </div>
+      )}
+
+      {showBulkDeleteConfirm && (
+        <ConfirmDeleteModal
+          message={`Are you sure you want to permanently delete ${selectedIds.size} student(s)? This cannot be undone.`}
+          onConfirm={bulkDelete}
+          onCancel={() => setShowBulkDeleteConfirm(false)}
+        />
       )}
 
       {/* Table */}
@@ -486,6 +519,7 @@ function StudentRow({
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [hasWaitlist, setHasWaitlist] = useState(false);
   const [copiedJoin, setCopiedJoin] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (expanded) {
@@ -583,6 +617,27 @@ function StudentRow({
     navigator.clipboard.writeText(`${appUrl}/join/${student.joinCode}`);
     setCopiedJoin(true);
     setTimeout(() => setCopiedJoin(false), 2000);
+  }
+
+  async function deleteStudent() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/students/${student.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        showToast(`Deleted ${student.name}`);
+        onUpdated();
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Failed to delete student");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+      setShowDeleteConfirm(false);
+    }
   }
 
   const lastCallDate = getLastCallDate(student.firstCallDate);
@@ -817,6 +872,25 @@ function StudentRow({
                       Waitlist
                     </button>
                   )}
+                  <div className="pt-4 border-t border-sand-dark">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDeleteConfirm(true);
+                      }}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-error hover:bg-error/90 text-white rounded-md"
+                    >
+                      <Trash2 size={14} /> Delete Student
+                    </button>
+                  </div>
+                  {showDeleteConfirm && (
+                    <ConfirmDeleteModal
+                      message={`Are you sure you want to permanently delete ${student.name}? This cannot be undone.`}
+                      onConfirm={deleteStudent}
+                      onCancel={() => setShowDeleteConfirm(false)}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -997,6 +1071,50 @@ function AddStudentModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDeleteModal({
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={(e) => {
+        e.stopPropagation();
+        onCancel();
+      }}
+    >
+      <div
+        className="bg-white rounded-lg shadow-lg w-full max-w-sm mx-4 p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold text-navy mb-3">
+          Confirm Delete
+        </h2>
+        <p className="text-sm text-charcoal mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-charcoal hover:bg-sand rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm font-medium bg-error hover:bg-error/90 text-white rounded-md transition-colors"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );
