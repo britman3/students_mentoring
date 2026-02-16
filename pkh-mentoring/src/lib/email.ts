@@ -45,9 +45,7 @@ export async function sendConfirmationEmail(
 function buildConfirmationHtml(data: ConfirmationEmailData): string {
   const joinLink = `${data.appUrl}/join/${data.student.joinCode}`;
 
-  const groupCodeLine =
-    data.settings.showGroupCodes
-      ? `
+  const groupCodeLine = `
                       <tr>
                         <td style="padding: 0 0 8px 0;">
                           <p style="margin: 0; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -61,8 +59,7 @@ function buildConfirmationHtml(data: ConfirmationEmailData): string {
                             ${data.slotInstance.groupCode}
                           </p>
                         </td>
-                      </tr>`
-      : "";
+                      </tr>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -79,7 +76,7 @@ function buildConfirmationHtml(data: ConfirmationEmailData): string {
           <!-- Navy Header -->
           <tr>
             <td style="background-color: #1B2A4A; padding: 28px 32px; text-align: center;">
-              <img src="${data.appUrl}/pkh_logo.png" alt="Property Know How" style="max-width: 180px; height: auto;" />
+              <img src="${data.appUrl}/pkh_logo.svg" alt="Property Know How" style="max-width: 180px; height: auto;" />
             </td>
           </tr>
 
