@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,11 +17,12 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ password }),
       });
 
       if (res.ok) {
-        router.push("/admin");
+        window.location.href = "/admin";
       } else {
         const data = await res.json().catch(() => null);
         setError(data?.error || "Invalid password");
