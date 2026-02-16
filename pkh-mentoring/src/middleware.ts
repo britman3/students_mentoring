@@ -38,7 +38,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname === "/admin/login" || pathname.startsWith("/api/admin/auth")) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set("x-pathname", pathname);
+    return response;
   }
 
   const token = request.cookies.get(COOKIE_NAME)?.value;
@@ -52,7 +54,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set("x-pathname", pathname);
+  return response;
 }
 
 export const config = {
