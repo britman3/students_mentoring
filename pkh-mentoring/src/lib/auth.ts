@@ -3,14 +3,14 @@ import crypto from "crypto";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db";
 
-const COOKIE_NAME = "pkh_admin_session";
-const SESSION_MAX_AGE = 60 * 60 * 24; // 24 hours
+export const COOKIE_NAME = "pkh_admin_session";
+export const SESSION_MAX_AGE = 60 * 60 * 24; // 24 hours
 
 function getSessionSecret(): string {
   return process.env.SESSION_SECRET || "default-secret-change-me";
 }
 
-function createSessionToken(): string {
+export function createSessionToken(): string {
   const payload = Date.now().toString();
   const hmac = crypto.createHmac("sha256", getSessionSecret());
   hmac.update(payload);
@@ -36,7 +36,7 @@ export async function setSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") ?? false,
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE,

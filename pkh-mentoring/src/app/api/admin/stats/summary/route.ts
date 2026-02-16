@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { StudentStatus } from "@prisma/client";
 import { getDayName, formatDisplayTime } from "@/lib/display";
+import { getCurrentWeek } from "@/lib/fortnightly";
 
 export async function GET() {
   try {
@@ -69,11 +70,14 @@ export async function GET() {
         studentCount: c._count.students,
       }));
 
+    const currentWeek = getCurrentWeek(settings?.anchorDate);
+
     return NextResponse.json({
       totalStudents,
       totalCapacity,
       openSlots,
       waitlistCount,
+      currentWeek,
       closerStats,
       recentEnrolments: recentEnrolments.map((s) => ({
         id: s.id,

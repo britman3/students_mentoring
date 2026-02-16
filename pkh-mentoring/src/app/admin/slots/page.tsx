@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Copy, X, Check } from "lucide-react";
+import { Plus, Copy, X, Check, Trash2 } from "lucide-react";
 
 interface SlotInstance {
   id: string;
@@ -378,6 +378,8 @@ function EditSlotModal({
   const [zoomLink, setZoomLink] = useState(slot.zoomLink || "");
   const [isOpen, setIsOpen] = useState(slot.isOpen);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -400,6 +402,28 @@ function EditSlotModal({
       setError("Something went wrong");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/slots/${slot.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        onUpdated();
+      } else {
+        setError(data.error || "Failed to delete slot");
+        setConfirmDelete(false);
+      }
+    } catch {
+      setError("Something went wrong");
+      setConfirmDelete(false);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -447,21 +471,43 @@ function EditSlotModal({
               {error}
             </div>
           )}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-charcoal hover:bg-sand rounded-md transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium bg-navy hover:bg-navy-light text-white rounded-md transition-colors disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
+          <div className="flex items-center justify-between pt-2">
+            {!confirmDelete ? (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-error hover:bg-error/10 rounded-md transition-colors"
+              >
+                <Trash2 size={15} />
+                Delete
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-error hover:bg-error/90 text-white rounded-md transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={15} />
+                {deleting ? "Deleting..." : "Confirm Delete"}
+              </button>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-charcoal hover:bg-sand rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium bg-navy hover:bg-navy-light text-white rounded-md transition-colors disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

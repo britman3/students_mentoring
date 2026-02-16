@@ -367,8 +367,7 @@ export default function EnrolmentForm({
                     {slot.dayName} {slot.displayTime}
                   </p>
                   <p className="text-sm text-warm-grey">
-                    {slot.availableSpots} spot
-                    {slot.availableSpots !== 1 ? "s" : ""} remaining
+                    Spots available
                   </p>
                 </div>
               </label>
@@ -414,7 +413,7 @@ export default function EnrolmentForm({
               <option value="">Select a slot...</option>
               {waitlistOptions.map((slot) => (
                 <option key={slot.id} value={slot.id}>
-                  {slot.dayName} {slot.displayTime} ({slot.availableSpots} spots)
+                  {slot.dayName} {slot.displayTime}
                 </option>
               ))}
             </select>

@@ -22,6 +22,7 @@ interface Stats {
   totalCapacity: number;
   openSlots: number;
   waitlistCount: number;
+  currentWeek: number | null;
   closerStats: CloserStat[];
   recentEnrolments: {
     id: string;
@@ -31,6 +32,23 @@ interface Stats {
     group: string | null;
     enrolledAt: string;
   }[];
+}
+
+function formatTodayDate(): string {
+  const now = new Date();
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const day = now.getDate();
+  const suffix = (d: number) => {
+    if (d > 3 && d < 21) return "th";
+    switch (d % 10) {
+      case 1: return "st";
+      case 2: return "nd";
+      case 3: return "rd";
+      default: return "th";
+    }
+  };
+  return `${dayNames[now.getDay()]} ${day}${suffix(day)} ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 }
 
 export default function AdminDashboardPage() {
@@ -55,7 +73,20 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-navy mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-semibold text-navy mb-4">Dashboard</h1>
+
+      {/* Date & Week Info Bar */}
+      <div className="bg-white rounded-lg border border-sand-dark shadow-sm p-4 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Calendar size={20} className="text-gold" />
+          <span className="text-sm font-medium text-charcoal">{formatTodayDate()}</span>
+        </div>
+        {stats?.currentWeek && (
+          <div className="bg-navy text-white text-sm font-semibold px-4 py-1.5 rounded-full">
+            Week {stats.currentWeek}
+          </div>
+        )}
+      </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

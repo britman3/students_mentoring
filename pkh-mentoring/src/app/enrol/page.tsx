@@ -71,7 +71,7 @@ function EnrolPageContent() {
           {/* Logo */}
           <div className="mb-8 text-center">
             <img
-              src="/pkh_logo.png"
+              src="/pkh_logo.svg"
               alt="Property Know How"
               className="mx-auto h-16 w-auto"
             />
@@ -117,10 +117,10 @@ function EnrolPageContent() {
                 </div>
               )}
 
-              {existing.showGroupCodes && existing.groupCode && (
+              {existing.groupCode && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-warm-grey">
-                    Group
+                    Your Group
                   </p>
                   <p className="mt-1 text-lg font-semibold text-navy">
                     {existing.groupCode}
@@ -164,7 +164,7 @@ function EnrolPageContent() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <img
-            src="/pkh_logo.png"
+            src="/pkh_logo.svg"
             alt="Property Know How"
             className="mx-auto h-16 w-auto"
           />

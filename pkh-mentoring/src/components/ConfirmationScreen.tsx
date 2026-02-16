@@ -61,10 +61,10 @@ export default function ConfirmationScreen({
           </p>
         </div>
 
-        {showGroupCodes && groupCode && (
+        {groupCode && (
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-warm-grey">
-              Group
+              Your Group
             </p>
             <p className="mt-1 text-lg font-semibold text-navy">
               {groupCode}
